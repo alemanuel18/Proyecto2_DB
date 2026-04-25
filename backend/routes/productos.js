@@ -1,12 +1,15 @@
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/authMiddleware');
+const express      = require('express');
+const router       = express.Router();
+const auth         = require('../middleware/authMiddleware');
+const requireRole  = require('../middleware/roleMiddleware');
+
+const LECTURA   = [1, 2, 4];  // vendedor necesita ver productos para registrar ventas
+const ESCRITURA = [1];
 
 router.use(auth);
 
 // GET /api/productos
-// JOIN con Categoria_Producto y Categoria para mostrar categorías
-router.get('/', async (req, res, next) => {
+router.get('/', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -25,7 +28,7 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET /api/productos/:id
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -45,9 +48,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/productos
-// Body: { nombre_Producto, precio_Producto, stock, categorias: [id, ...] }
-router.post('/', async (req, res, next) => {
+// POST /api/productos  — solo Admin
+router.post('/', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Producto, precio_Producto, stock, categorias = [] } = req.body;
 
   if (!nombre_Producto || precio_Producto == null || stock == null) {
@@ -82,8 +84,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/productos/:id
-router.put('/:id', async (req, res, next) => {
+// PUT /api/productos/:id  — solo Admin
+router.put('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Producto, precio_Producto, stock, categorias = [] } = req.body;
 
   if (!nombre_Producto || precio_Producto == null || stock == null) {
@@ -104,11 +106,7 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
-    // Reemplazar categorías
-    await conn.query(
-      `DELETE FROM Categoria_Producto WHERE id_Producto = ?`,
-      [req.params.id]
-    );
+    await conn.query(`DELETE FROM Categoria_Producto WHERE id_Producto = ?`, [req.params.id]);
     if (categorias.length > 0) {
       const valores = categorias.map(id_cat => [id_cat, req.params.id]);
       await conn.query(
@@ -127,8 +125,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/productos/:id
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/productos/:id  — solo Admin
+router.delete('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const conn = await req.app.locals.db.getConnection();
   try {
     await conn.beginTransaction();

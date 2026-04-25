@@ -1,15 +1,14 @@
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/authMiddleware');
+const express      = require('express');
+const router       = express.Router();
+const auth         = require('../middleware/authMiddleware');
+const requireRole  = require('../middleware/roleMiddleware');
+
+// Reportes: Admin y Supervisor pueden ver todos
+const LECTURA = [1, 4];
 
 router.use(auth);
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reportes/ventas-por-mes
-// GROUP BY + HAVING + función de agregación (visible en UI)
-// Muestra meses con ventas totales superiores a Q0
-// ─────────────────────────────────────────────────────────────
-router.get('/ventas-por-mes', async (req, res, next) => {
+router.get('/ventas-por-mes', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -28,12 +27,7 @@ router.get('/ventas-por-mes', async (req, res, next) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reportes/productos-mas-vendidos
-// Subquery en FROM (visible en UI)
-// Muestra los 10 productos con mayor cantidad vendida
-// ─────────────────────────────────────────────────────────────
-router.get('/productos-mas-vendidos', async (req, res, next) => {
+router.get('/productos-mas-vendidos', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -59,11 +53,7 @@ router.get('/productos-mas-vendidos', async (req, res, next) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reportes/clientes-sin-compras
-// Subquery con NOT IN (visible en UI)
-// ─────────────────────────────────────────────────────────────
-router.get('/clientes-sin-compras', async (req, res, next) => {
+router.get('/clientes-sin-compras', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -80,12 +70,7 @@ router.get('/clientes-sin-compras', async (req, res, next) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reportes/top-clientes
-// CTE (WITH) — visible en UI
-// Muestra los clientes con mayor gasto total
-// ─────────────────────────────────────────────────────────────
-router.get('/top-clientes', async (req, res, next) => {
+router.get('/top-clientes', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -111,11 +96,7 @@ router.get('/top-clientes', async (req, res, next) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reportes/resumen-inventario
-// Usa el VIEW vista_inventario (definido en 04_views.sql)
-// ─────────────────────────────────────────────────────────────
-router.get('/resumen-inventario', async (req, res, next) => {
+router.get('/resumen-inventario', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(`SELECT * FROM vista_inventario ORDER BY stock ASC`);
@@ -125,12 +106,7 @@ router.get('/resumen-inventario', async (req, res, next) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/reportes/vendedores-activos
-// Subquery correlacionado con EXISTS (visible en UI)
-// Muestra usuarios que han registrado al menos 1 venta
-// ─────────────────────────────────────────────────────────────
-router.get('/vendedores-activos', async (req, res, next) => {
+router.get('/vendedores-activos', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(

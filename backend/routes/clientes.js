@@ -1,12 +1,16 @@
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/authMiddleware');
+const express      = require('express');
+const router       = express.Router();
+const auth         = require('../middleware/authMiddleware');
+const requireRole  = require('../middleware/roleMiddleware');
 
-// Todas las rutas de clientes requieren autenticación
+// 1=Admin  2=Vendedor (solo lectura, necesita clientes para crear ventas)  4=Supervisor
+const LECTURA   = [1, 2, 4];
+const ESCRITURA = [1];
+
 router.use(auth);
 
-// GET /api/clientes
-router.get('/', async (req, res, next) => {
+// GET /api/clientes  — Admin, Supervisor
+router.get('/', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -20,8 +24,8 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/clientes/:id
-router.get('/:id', async (req, res, next) => {
+// GET /api/clientes/:id  — Admin, Supervisor
+router.get('/:id', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -37,8 +41,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/clientes
-router.post('/', async (req, res, next) => {
+// POST /api/clientes  — solo Admin
+router.post('/', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Cliente, telefono, direccion, email, NIT } = req.body;
 
   if (!nombre_Cliente || !telefono || !direccion || !email || !NIT) {
@@ -58,8 +62,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/clientes/:id
-router.put('/:id', async (req, res, next) => {
+// PUT /api/clientes/:id  — solo Admin
+router.put('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Cliente, telefono, direccion, email, NIT } = req.body;
 
   if (!nombre_Cliente || !telefono || !direccion || !email || !NIT) {
@@ -81,8 +85,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/clientes/:id
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/clientes/:id  — solo Admin
+router.delete('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [result] = await db.query(

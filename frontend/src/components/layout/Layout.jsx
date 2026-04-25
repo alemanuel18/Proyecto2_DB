@@ -1,18 +1,19 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { usePermisos } from '../../hooks/usePermisos';
 import './Layout.css';
-
-const NAV = [
-  { to: '/',            icon: '▦',  label: 'Dashboard'   },
-  { to: '/ventas',      icon: '🛒', label: 'Ventas'       },
-  { to: '/productos',   icon: '📦', label: 'Productos'    },
-  { to: '/clientes',    icon: '👥', label: 'Clientes'     },
-  { to: '/proveedores', icon: '🏭', label: 'Proveedores'  },
-  { to: '/reportes',    icon: '📊', label: 'Reportes'     },
-];
 
 export default function Layout() {
   const navigate  = useNavigate();
-  const usuario   = JSON.parse(localStorage.getItem('usuario') || '{}');
+  const { usuario, verVentas, verClientes, verProductos, verProveedores, verReportes } = usePermisos();
+
+  const NAV = [
+    { to: '/',            icon: '▦',  label: 'Dashboard',   visible: true          },
+    { to: '/ventas',      icon: '🛒', label: 'Ventas',       visible: verVentas     },
+    { to: '/productos',   icon: '📦', label: 'Productos',    visible: verProductos  },
+    { to: '/clientes',    icon: '👥', label: 'Clientes',     visible: verClientes   },
+    { to: '/proveedores', icon: '🏭', label: 'Proveedores',  visible: verProveedores},
+    { to: '/reportes',    icon: '📊', label: 'Reportes',     visible: verReportes   },
+  ].filter(item => item.visible);
 
   function logout() {
     localStorage.removeItem('token');

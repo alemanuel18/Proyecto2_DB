@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { usePermisos } from '../../hooks/usePermisos';
 
 const EMPTY = { nombre_Proveedor: '', telefono: '', email: '' };
 
 export default function Proveedores() {
+  const { puedeModificar } = usePermisos();
+
   const [proveedores, setProveedores] = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [modal,       setModal]       = useState(false);
@@ -59,7 +62,9 @@ export default function Proveedores() {
     <div>
       <div className="page-header">
         <h1>🏭 Proveedores</h1>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo proveedor</button>
+        {puedeModificar && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo proveedor</button>
+        )}
       </div>
 
       {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
@@ -69,7 +74,10 @@ export default function Proveedores() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Nombre</th><th>Teléfono</th><th>Email</th><th>Productos</th><th>Acciones</th></tr>
+              <tr>
+                <th>Nombre</th><th>Teléfono</th><th>Email</th><th>Productos</th>
+                <th>Acciones</th>
+              </tr>
             </thead>
             <tbody>
               {proveedores.length === 0 && (
@@ -84,8 +92,12 @@ export default function Proveedores() {
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => verDetalle(p)}>Ver</button>
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => eliminar(p.id_Proveedor)}>Eliminar</button>
+                      {puedeModificar && (
+                        <>
+                          <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => eliminar(p.id_Proveedor)}>Eliminar</button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -95,8 +107,7 @@ export default function Proveedores() {
         </div>
       )}
 
-      {/* Modal form */}
-      {modal && (
+      {modal && puedeModificar && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">
@@ -128,7 +139,6 @@ export default function Proveedores() {
         </div>
       )}
 
-      {/* Modal detalle */}
       {detModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDetModal(null)}>
           <div className="modal">

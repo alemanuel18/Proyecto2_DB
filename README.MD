@@ -84,6 +84,50 @@ http://localhost:5173
 
 ---
 
+## Roles y permisos
+
+El sistema implementa control de acceso basado en roles. Cada usuario solo puede ver y realizar las acciones que su rol permite.
+
+### Administrador
+Acceso total al sistema.
+
+| Sección | Ver | Crear | Editar | Eliminar |
+|---|---|---|---|---|
+| Dashboard | ✅ | — | — | — |
+| Ventas | ✅ | ✅ | — | ✅ |
+| Productos | ✅ | ✅ | ✅ | ✅ |
+| Clientes | ✅ | ✅ | ✅ | ✅ |
+| Proveedores | ✅ | ✅ | ✅ | ✅ |
+| Reportes | ✅ | — | — | — |
+
+### Vendedor
+Solo tiene acceso a la sección de Ventas. Puede registrar nuevas ventas y eliminarlas, pero no puede acceder al resto del sistema.
+
+| Sección | Ver | Crear | Editar | Eliminar |
+|---|---|---|---|---|
+| Dashboard | ✅ | — | — | — |
+| Ventas | ✅ | ✅ | — | ✅ |
+| Productos | ❌ | ❌ | ❌ | ❌ |
+| Clientes | ❌ | ❌ | ❌ | ❌ |
+| Proveedores | ❌ | ❌ | ❌ | ❌ |
+| Reportes | ❌ | — | — | — |
+
+### Supervisor
+Puede ver todas las secciones del sistema en modo lectura. No puede crear, editar ni eliminar ningún registro.
+
+| Sección | Ver | Crear | Editar | Eliminar |
+|---|---|---|---|---|
+| Dashboard | ✅ | — | — | — |
+| Ventas | ✅ | ❌ | — | ❌ |
+| Productos | ✅ | ❌ | ❌ | ❌ |
+| Clientes | ✅ | ❌ | ❌ | ❌ |
+| Proveedores | ✅ | ❌ | ❌ | ❌ |
+| Reportes | ✅ | — | — | — |
+
+> Los permisos se aplican en dos capas: el **frontend** oculta los botones de acción según el rol, y el **backend** rechaza con `403 Forbidden` cualquier intento de modificación no autorizado.
+
+---
+
 ## Detener el proyecto
 
 ```bash
@@ -116,7 +160,8 @@ proyecto2/
 │   ├── package.json
 │   ├── index.js
 │   ├── middleware/
-│   │   └── authMiddleware.js
+│   │   ├── authMiddleware.js
+│   │   └── roleMiddleware.js
 │   └── routes/
 │       ├── auth.js
 │       ├── clientes.js
@@ -134,6 +179,8 @@ proyecto2/
         ├── index.css
         ├── App.jsx
         ├── api.js
+        ├── hooks/
+        │   └── usePermisos.js
         ├── components/
         │   ├── Layout.jsx
         │   └── Layout.css
@@ -157,6 +204,7 @@ proyecto2/
 | Backend | Node.js 22 + Express |
 | Frontend | React 18 + Vite |
 | Autenticación | JWT (jsonwebtoken + bcryptjs) |
+| Autorización | Middleware de roles por endpoint |
 | Contenedores | Docker + Docker Compose |
 
 ---
@@ -173,27 +221,31 @@ Todos los endpoints (excepto `/api/auth/login`) requieren el header:
 | POST | `/api/auth/logout` | Logout (stateless) |
 
 ### Recursos CRUD
-| Método | Ruta | Descripción |
-|---|---|---|
-| GET/POST | `/api/clientes` | Listar / crear clientes |
-| GET/PUT/DELETE | `/api/clientes/:id` | Obtener / editar / eliminar |
-| GET/POST | `/api/productos` | Listar / crear productos |
-| GET/PUT/DELETE | `/api/productos/:id` | Obtener / editar / eliminar |
-| GET/POST | `/api/ventas` | Listar / registrar ventas |
-| GET/DELETE | `/api/ventas/:id` | Detalle / eliminar venta |
-| GET/POST | `/api/proveedores` | Listar / crear proveedores |
-| GET/PUT/DELETE | `/api/proveedores/:id` | Obtener / editar / eliminar |
-| GET/POST | `/api/categorias` | Listar / crear categorías |
+| Método | Ruta | Descripción | Roles permitidos |
+|---|---|---|---|
+| GET | `/api/clientes` | Listar clientes | Admin, Vendedor, Supervisor |
+| POST | `/api/clientes` | Crear cliente | Admin |
+| PUT/DELETE | `/api/clientes/:id` | Editar / eliminar | Admin |
+| GET | `/api/productos` | Listar productos | Admin, Vendedor, Supervisor |
+| POST | `/api/productos` | Crear producto | Admin |
+| PUT/DELETE | `/api/productos/:id` | Editar / eliminar | Admin |
+| GET | `/api/ventas` | Listar ventas | Admin, Vendedor, Supervisor |
+| POST | `/api/ventas` | Registrar venta | Admin, Vendedor |
+| DELETE | `/api/ventas/:id` | Eliminar venta | Admin, Vendedor |
+| GET | `/api/proveedores` | Listar proveedores | Admin, Supervisor |
+| POST | `/api/proveedores` | Crear proveedor | Admin |
+| PUT/DELETE | `/api/proveedores/:id` | Editar / eliminar | Admin |
+| GET/POST | `/api/categorias` | Listar / crear | Admin |
 
 ### Reportes
-| Ruta | Consulta SQL usada |
-|---|---|
-| `/api/reportes/ventas-por-mes` | `GROUP BY` + `HAVING` + `SUM` |
-| `/api/reportes/productos-mas-vendidos` | Subquery en `FROM` |
-| `/api/reportes/clientes-sin-compras` | Subquery con `NOT IN` |
-| `/api/reportes/top-clientes` | CTE con `WITH` |
-| `/api/reportes/resumen-inventario` | `VIEW vista_inventario` |
-| `/api/reportes/vendedores-activos` | Subquery con `EXISTS` |
+| Ruta | Consulta SQL usada | Roles permitidos |
+|---|---|---|
+| `/api/reportes/ventas-por-mes` | `GROUP BY` + `HAVING` + `SUM` | Admin, Supervisor |
+| `/api/reportes/productos-mas-vendidos` | Subquery en `FROM` | Admin, Supervisor |
+| `/api/reportes/clientes-sin-compras` | Subquery con `NOT IN` | Admin, Supervisor |
+| `/api/reportes/top-clientes` | CTE con `WITH` | Admin, Supervisor |
+| `/api/reportes/resumen-inventario` | `VIEW vista_inventario` | Admin, Supervisor |
+| `/api/reportes/vendedores-activos` | Subquery con `EXISTS` | Admin, Supervisor |
 
 ---
 
@@ -247,6 +299,7 @@ Si cualquier paso falla (stock insuficiente, producto inexistente, error de BD),
 ## Funcionalidades implementadas
 
 - ✅ Login / logout con sesión JWT (8 horas)
+- ✅ Control de acceso por roles (Administrador, Vendedor, Supervisor)
 - ✅ CRUD completo: Clientes, Productos, Proveedores, Categorías
 - ✅ Registro de ventas con múltiples productos y descuento de stock automático
 - ✅ Dashboard con estadísticas en tiempo real

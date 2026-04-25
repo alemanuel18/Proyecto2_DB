@@ -1,12 +1,15 @@
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/authMiddleware');
+const express      = require('express');
+const router       = express.Router();
+const auth         = require('../middleware/authMiddleware');
+const requireRole  = require('../middleware/roleMiddleware');
+
+const LECTURA   = [1, 4];
+const ESCRITURA = [1];
 
 router.use(auth);
 
 // GET /api/proveedores
-// JOIN con Proveedor_Producto para ver cuántos productos maneja cada uno
-router.get('/', async (req, res, next) => {
+router.get('/', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -23,8 +26,8 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/proveedores/:id — incluye los productos que suministra
-router.get('/:id', async (req, res, next) => {
+// GET /api/proveedores/:id
+router.get('/:id', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
 
@@ -49,8 +52,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/proveedores
-router.post('/', async (req, res, next) => {
+// POST /api/proveedores  — solo Admin
+router.post('/', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Proveedor, telefono, email } = req.body;
   if (!nombre_Proveedor || !telefono || !email) {
     return res.status(400).json({ error: 'nombre_Proveedor, telefono y email son requeridos' });
@@ -68,8 +71,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/proveedores/:id
-router.put('/:id', async (req, res, next) => {
+// PUT /api/proveedores/:id  — solo Admin
+router.put('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Proveedor, telefono, email } = req.body;
   if (!nombre_Proveedor || !telefono || !email) {
     return res.status(400).json({ error: 'nombre_Proveedor, telefono y email son requeridos' });
@@ -89,8 +92,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/proveedores/:id
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/proveedores/:id  — solo Admin
+router.delete('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const conn = await req.app.locals.db.getConnection();
   try {
     await conn.beginTransaction();

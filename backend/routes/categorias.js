@@ -1,11 +1,14 @@
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/authMiddleware');
+const express      = require('express');
+const router       = express.Router();
+const auth         = require('../middleware/authMiddleware');
+const requireRole  = require('../middleware/roleMiddleware');
+
+const LECTURA   = [1, 2, 4];  // vendedor necesita categorías al crear productos (aunque no pueda crearlos, no hace daño)
+const ESCRITURA = [1];
 
 router.use(auth);
 
-// GET /api/categorias
-router.get('/', async (req, res, next) => {
+router.get('/', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -17,8 +20,7 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/categorias/:id
-router.get('/:id', async (req, res, next) => {
+router.get('/:id', requireRole(LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -32,8 +34,7 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/categorias
-router.post('/', async (req, res, next) => {
+router.post('/', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Categoria } = req.body;
   if (!nombre_Categoria) return res.status(400).json({ error: 'nombre_Categoria es requerido' });
 
@@ -49,8 +50,7 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/categorias/:id
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Categoria } = req.body;
   if (!nombre_Categoria) return res.status(400).json({ error: 'nombre_Categoria es requerido' });
 
@@ -67,8 +67,7 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/categorias/:id
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [result] = await db.query(

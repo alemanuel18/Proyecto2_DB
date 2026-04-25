@@ -1,26 +1,28 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { usePermisos } from '../../hooks/usePermisos';
 
 export default function Ventas() {
+  const { puedeCrearVenta, puedeEliminarVenta } = usePermisos();
+
   const [ventas,    setVentas]    = useState([]);
   const [clientes,  setClientes]  = useState([]);
   const [productos, setProductos] = useState([]);
   const [loading,   setLoading]   = useState(true);
   const [modal,     setModal]     = useState(false);
-  const [detModal,  setDetModal]  = useState(null); // venta seleccionada para ver detalle
+  const [detModal,  setDetModal]  = useState(null);
   const [error,     setError]     = useState('');
   const [success,   setSuccess]   = useState('');
 
-  // Form nueva venta
-  const [idCliente,  setIdCliente]  = useState('');
-  const [detalle,    setDetalle]    = useState([{ id_Producto: '', cantidad: 1 }]);
+  const [idCliente, setIdCliente] = useState('');
+  const [detalle,   setDetalle]   = useState([{ id_Producto: '', cantidad: 1 }]);
 
   async function cargar() {
     setLoading(true);
     try {
       const [v, c, p] = await Promise.all([
         api.get('/api/ventas'),
-        api.get('/api/clientes'),
+        api.get('/api/clientes').catch(() => ({ data: [] })),  // vendedor no tiene acceso a /clientes completo
         api.get('/api/productos'),
       ]);
       setVentas(v.data);
@@ -75,7 +77,6 @@ export default function Ventas() {
     }
   }
 
-  // Exportar ventas a CSV (reporte exportable)
   function exportarCSV() {
     const header = 'ID,Fecha,Vendedor,Cliente,Total\n';
     const rows = ventas.map(v =>
@@ -97,7 +98,11 @@ export default function Ventas() {
         <h1>🛒 Ventas</h1>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-ghost" onClick={exportarCSV}>⬇ Exportar CSV</button>
-          <button className="btn btn-primary" onClick={() => { setError(''); setModal(true); }}>+ Nueva venta</button>
+          {puedeCrearVenta && (
+            <button className="btn btn-primary" onClick={() => { setError(''); setModal(true); }}>
+              + Nueva venta
+            </button>
+          )}
         </div>
       </div>
 
@@ -108,7 +113,10 @@ export default function Ventas() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>#</th><th>Fecha</th><th>Vendedor</th><th>Cliente</th><th>Total</th><th>Acciones</th></tr>
+              <tr>
+                <th>#</th><th>Fecha</th><th>Vendedor</th><th>Cliente</th><th>Total</th>
+                <th>Acciones</th>
+              </tr>
             </thead>
             <tbody>
               {ventas.length === 0 && (
@@ -124,7 +132,9 @@ export default function Ventas() {
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => verDetalle(v)}>Ver</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => eliminar(v.id_Venta)}>Eliminar</button>
+                      {puedeEliminarVenta && (
+                        <button className="btn btn-danger btn-sm" onClick={() => eliminar(v.id_Venta)}>Eliminar</button>
+                      )}
                     </div>
                   </td>
                 </tr>

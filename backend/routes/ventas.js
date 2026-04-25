@@ -1,12 +1,16 @@
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/authMiddleware');
+const express      = require('express');
+const router       = express.Router();
+const auth         = require('../middleware/authMiddleware');
+const requireRole  = require('../middleware/roleMiddleware');
+
+// Roles:  1=Admin  2=Vendedor  4=Supervisor
+const SOLO_LECTURA    = [1, 2, 4];   // pueden ver ventas
+const PUEDE_ESCRIBIR  = [1, 2];      // pueden crear / eliminar
 
 router.use(auth);
 
-// GET /api/ventas
-// JOIN: Venta + Usuario + Cliente (consulta con JOIN múltiple visible en UI)
-router.get('/', async (req, res, next) => {
+// GET /api/ventas  — Admin, Vendedor, Supervisor
+router.get('/', requireRole(SOLO_LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     const [rows] = await db.query(
@@ -27,9 +31,8 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// GET /api/ventas/:id  — detalle completo de una venta
-// JOIN: Venta + Detalle + Producto (segundo JOIN múltiple visible en UI)
-router.get('/:id', async (req, res, next) => {
+// GET /api/ventas/:id  — Admin, Vendedor, Supervisor
+router.get('/:id', requireRole(SOLO_LECTURA), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
 
@@ -61,11 +64,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/ventas
-// Transacción explícita: inserta Venta + Detalle y descuenta stock.
-// Hace ROLLBACK si el stock es insuficiente o cualquier INSERT falla.
-// Body: { id_Cliente, detalle: [{ id_Producto, cantidad }] }
-router.post('/', async (req, res, next) => {
+// POST /api/ventas  — solo Admin y Vendedor
+router.post('/', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
   const { id_Cliente, detalle } = req.body;
   const id_Usuario = req.usuario.id_Usuario;
 
@@ -77,14 +77,12 @@ router.post('/', async (req, res, next) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Insertar la venta
     const [ventaResult] = await conn.query(
       `INSERT INTO Venta (Fecha, id_Usuario, id_Cliente) VALUES (CURDATE(), ?, ?)`,
       [id_Usuario, id_Cliente]
     );
     const id_Venta = ventaResult.insertId;
 
-    // 2. Por cada producto en el detalle
     for (const item of detalle) {
       const { id_Producto, cantidad } = item;
 
@@ -92,7 +90,6 @@ router.post('/', async (req, res, next) => {
         throw Object.assign(new Error('Producto o cantidad inválidos'), { status: 400 });
       }
 
-      // 2a. Verificar stock disponible
       const [prod] = await conn.query(
         `SELECT stock, precio_Producto FROM Producto WHERE id_Producto = ? FOR UPDATE`,
         [id_Producto]
@@ -107,14 +104,12 @@ router.post('/', async (req, res, next) => {
         );
       }
 
-      // 2b. Insertar detalle con el precio actual del producto
       await conn.query(
         `INSERT INTO Detalle (cantidad, precio_actual, id_Venta, id_Producto)
          VALUES (?, ?, ?, ?)`,
         [cantidad, prod[0].precio_Producto, id_Venta, id_Producto]
       );
 
-      // 2c. Descontar stock
       await conn.query(
         `UPDATE Producto SET stock = stock - ? WHERE id_Producto = ?`,
         [cantidad, id_Producto]
@@ -132,13 +127,12 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// DELETE /api/ventas/:id — elimina venta y restaura stock
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/ventas/:id  — solo Admin y Vendedor
+router.delete('/:id', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
   const conn = await req.app.locals.db.getConnection();
   try {
     await conn.beginTransaction();
 
-    // Restaurar stock de cada producto en el detalle
     const [detalle] = await conn.query(
       `SELECT id_Producto, cantidad FROM Detalle WHERE id_Venta = ?`,
       [req.params.id]

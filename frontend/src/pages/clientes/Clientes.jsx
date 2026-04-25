@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { usePermisos } from '../../hooks/usePermisos';
 
 const EMPTY = { nombre_Cliente: '', telefono: '', direccion: '', email: '', NIT: '' };
 
 export default function Clientes() {
+  const { puedeModificar } = usePermisos();
+
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState(false);
@@ -18,7 +21,7 @@ export default function Clientes() {
     try {
       const { data } = await api.get('/api/clientes');
       setClientes(data);
-    } catch { /* manejado por interceptor */ }
+    } catch { }
     finally { setLoading(false); }
   }
   useEffect(() => { cargar(); }, []);
@@ -66,7 +69,9 @@ export default function Clientes() {
     <div>
       <div className="page-header">
         <h1>👥 Clientes</h1>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo cliente</button>
+        {puedeModificar && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo cliente</button>
+        )}
       </div>
 
       {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
@@ -82,12 +87,13 @@ export default function Clientes() {
           <table>
             <thead>
               <tr>
-                <th>Nombre</th><th>Teléfono</th><th>Email</th><th>NIT</th><th>Dirección</th><th>Acciones</th>
+                <th>Nombre</th><th>Teléfono</th><th>Email</th><th>NIT</th><th>Dirección</th>
+                {puedeModificar && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
+                <tr><td colSpan={puedeModificar ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
               )}
               {filtrados.map(c => (
                 <tr key={c.id_Cliente}>
@@ -96,12 +102,14 @@ export default function Clientes() {
                   <td>{c.email}</td>
                   <td style={{ fontFamily: 'var(--mono)' }}>{c.NIT}</td>
                   <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{c.direccion}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(c)}>Editar</button>
-                      <button className="btn btn-danger  btn-sm" onClick={() => eliminar(c.id_Cliente)}>Eliminar</button>
-                    </div>
-                  </td>
+                  {puedeModificar && (
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(c)}>Editar</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => eliminar(c.id_Cliente)}>Eliminar</button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -109,7 +117,7 @@ export default function Clientes() {
         </div>
       )}
 
-      {modal && (
+      {modal && puedeModificar && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">

@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
+import { usePermisos } from '../../hooks/usePermisos';
 
 const EMPTY = { nombre_Producto: '', precio_Producto: '', stock: '', categorias: [] };
 
 export default function Productos() {
+  const { puedeModificar } = usePermisos();
+
   const [productos,   setProductos]   = useState([]);
   const [categorias,  setCategorias]  = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -30,7 +33,7 @@ export default function Productos() {
       nombre_Producto:  p.nombre_Producto,
       precio_Producto:  p.precio_Producto,
       stock:            p.stock,
-      categorias:       [],   // simplificado: no pre-cargamos M:N en edición
+      categorias:       [],
     });
     setEditId(p.id_Producto); setError(''); setModal(true);
   }
@@ -90,7 +93,9 @@ export default function Productos() {
     <div>
       <div className="page-header">
         <h1>📦 Productos</h1>
-        <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo producto</button>
+        {puedeModificar && (
+          <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo producto</button>
+        )}
       </div>
 
       {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
@@ -105,11 +110,14 @@ export default function Productos() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Producto</th><th>Categorías</th><th>Precio</th><th>Stock</th><th>Estado</th><th>Acciones</th></tr>
+              <tr>
+                <th>Producto</th><th>Categorías</th><th>Precio</th><th>Stock</th><th>Estado</th>
+                {puedeModificar && <th>Acciones</th>}
+              </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
+                <tr><td colSpan={puedeModificar ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
               )}
               {filtrados.map(p => (
                 <tr key={p.id_Producto}>
@@ -118,12 +126,14 @@ export default function Productos() {
                   <td style={{ fontFamily: 'var(--mono)' }}>{fmt(p.precio_Producto)}</td>
                   <td style={{ fontFamily: 'var(--mono)' }}>{p.stock}</td>
                   <td>{stockBadge(p.stock)}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: 6 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => eliminar(p.id_Producto)}>Eliminar</button>
-                    </div>
-                  </td>
+                  {puedeModificar && (
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => eliminar(p.id_Producto)}>Eliminar</button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -131,7 +141,7 @@ export default function Productos() {
         </div>
       )}
 
-      {modal && (
+      {modal && puedeModificar && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">

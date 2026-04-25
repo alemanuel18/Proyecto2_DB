@@ -23,7 +23,7 @@ No se necesita Node.js, MySQL ni ningún otro runtime instalado localmente.
 ### 1. Clonar el repositorio
 
 ```bash
-git clone <URL_DEL_REPO>
+git clone https://github.com/alemanuel18/Proyecto2_DB.git
 cd proyecto2
 ```
 
@@ -106,7 +106,7 @@ Solo tiene acceso a la sección de Ventas. Puede registrar nuevas ventas y elimi
 | Sección | Ver | Crear | Editar | Eliminar |
 |---|---|---|---|---|
 | Dashboard | ✅ | — | — | — |
-| Ventas | ✅ | ✅ | — | ✅ |
+| Ventas | ✅ | ✅ | — | ❌ |
 | Productos | ❌ | ❌ | ❌ | ❌ |
 | Clientes | ❌ | ❌ | ❌ | ❌ |
 | Proveedores | ❌ | ❌ | ❌ | ❌ |

@@ -1,8 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout     from './components/layout/Layout';
 import Login      from './pages/login/Login';
-/*
 import Dashboard  from './pages/dashboard/Dashboard';
+/*
+
 import Clientes   from './pages/clientes/Clientes';
 import Productos  from './pages/productos/Productos';
 import Ventas     from './pages/ventas/Ventas';
@@ -25,8 +26,9 @@ export default function App() {
           <Layout />
         </PrivateRoute>
       }>
-        {/*}
         <Route index element={<Dashboard />} />
+        {/*}
+        
         <Route path="clientes" element={<Clientes />} />
         <Route path="productos" element={<Productos />} />
         <Route path="ventas" element={<Ventas />} />

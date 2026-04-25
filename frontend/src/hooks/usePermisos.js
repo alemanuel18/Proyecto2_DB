@@ -35,7 +35,7 @@ export function usePermisos() {
 
     // Acciones de escritura
     puedeCrearVenta:    [1, 2].includes(rol),
-    puedeEliminarVenta: [1, 2].includes(rol),
+    puedeEliminarVenta: [1].includes(rol),
     puedeModificar:     rol === 1,   // clientes, productos, proveedores, categorías
   };
 }

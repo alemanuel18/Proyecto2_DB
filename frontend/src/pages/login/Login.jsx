@@ -64,8 +64,6 @@ export default function Login() {
             {loading ? 'Ingresando...' : 'Iniciar sesión'}
           </button>
         </form>
-
-        <p className="login-hint">Usuario de prueba: <code>carlos.mendez</code> / <code>Pass1234</code></p>
       </div>
     </div>
   );

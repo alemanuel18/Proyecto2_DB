@@ -1,68 +1,58 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
 import { usePermisos } from '../../hooks/usePermisos';
+import { useToast } from '../../hooks/useToast';
+import { ToastContainer } from '../../components/ui/toast/Toast';
+import NumberInput from '../../components/ui/numberInput/NumberInput';
 
 const EMPTY = { nombre_Producto: '', precio_Producto: '', stock: '', categorias: [] };
 
 export default function Productos() {
   const { puedeModificar } = usePermisos();
+  const { toasts, removeToast, notify } = useToast();
 
-  const [productos,   setProductos]   = useState([]);
-  const [categorias,  setCategorias]  = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [modal,       setModal]       = useState(false);
-  const [form,        setForm]        = useState(EMPTY);
-  const [editId,      setEditId]      = useState(null);
-  const [error,       setError]       = useState('');
-  const [success,     setSuccess]     = useState('');
-  const [busqueda,    setBusqueda]    = useState('');
+  const [productos,  setProductos]  = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [modal,      setModal]      = useState(false);
+  const [form,       setForm]       = useState(EMPTY);
+  const [editId,     setEditId]     = useState(null);
+  const [formError,  setFormError]  = useState('');
+  const [busqueda,   setBusqueda]   = useState('');
 
   async function cargar() {
     setLoading(true);
     try {
       const [p, c] = await Promise.all([api.get('/api/productos'), api.get('/api/categorias')]);
-      setProductos(p.data);
-      setCategorias(c.data);
+      setProductos(p.data); setCategorias(c.data);
     } finally { setLoading(false); }
   }
   useEffect(() => { cargar(); }, []);
 
-  function abrirCrear() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
+  function abrirCrear() { setForm(EMPTY); setEditId(null); setFormError(''); setModal(true); }
   function abrirEditar(p) {
-    setForm({
-      nombre_Producto:  p.nombre_Producto,
-      precio_Producto:  p.precio_Producto,
-      stock:            p.stock,
-      categorias:       [],
-    });
-    setEditId(p.id_Producto); setError(''); setModal(true);
+    setForm({ nombre_Producto: p.nombre_Producto, precio_Producto: p.precio_Producto, stock: p.stock, categorias: [] });
+    setEditId(p.id_Producto); setFormError(''); setModal(true);
   }
 
   function toggleCategoria(id) {
     setForm(f => ({
       ...f,
-      categorias: f.categorias.includes(id)
-        ? f.categorias.filter(c => c !== id)
-        : [...f.categorias, id],
+      categorias: f.categorias.includes(id) ? f.categorias.filter(c => c !== id) : [...f.categorias, id],
     }));
   }
 
   async function guardar(e) {
-    e.preventDefault(); setError('');
+    e.preventDefault(); setFormError('');
     try {
-      const payload = {
-        ...form,
-        precio_Producto: parseFloat(form.precio_Producto),
-        stock: parseInt(form.stock),
-      };
+      const payload = { ...form, precio_Producto: parseFloat(form.precio_Producto), stock: parseInt(form.stock) };
       if (editId) await api.put(`/api/productos/${editId}`, payload);
       else        await api.post('/api/productos', payload);
       setModal(false);
-      setSuccess(editId ? 'Producto actualizado' : 'Producto creado');
+      notify(editId ? 'Producto actualizado correctamente' : 'Producto creado correctamente');
       cargar();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al guardar');
+      setFormError(err.response?.data?.error || 'Error al guardar');
     }
   }
 
@@ -70,36 +60,34 @@ export default function Productos() {
     if (!confirm('¿Eliminar este producto?')) return;
     try {
       await api.delete(`/api/productos/${id}`);
-      setSuccess('Producto eliminado'); cargar();
-      setTimeout(() => setSuccess(''), 3000);
+      notify('Producto eliminado');
+      cargar();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al eliminar');
+      notify(err.response?.data?.error || 'Error al eliminar', 'error');
     }
   }
 
   function stockBadge(stock) {
-    if (stock === 0)  return <span className="badge badge-red">Sin stock</span>;
-    if (stock < 20)   return <span className="badge badge-yellow">Stock bajo</span>;
+    if (stock === 0) return <span className="badge badge-red">Sin stock</span>;
+    if (stock < 20)  return <span className="badge badge-yellow">Stock bajo</span>;
     return <span className="badge badge-green">En stock</span>;
   }
 
   const filtrados = productos.filter(p =>
     p.nombre_Producto.toLowerCase().includes(busqueda.toLowerCase())
   );
-
   const fmt = n => `Q ${Number(n).toLocaleString('es-GT', { minimumFractionDigits: 2 })}`;
 
   return (
     <div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="page-header">
         <h1>📦 Productos</h1>
         {puedeModificar && (
           <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo producto</button>
         )}
       </div>
-
-      {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
-      {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
       <div style={{ marginBottom: 16 }}>
         <input placeholder="Buscar producto…" value={busqueda}
@@ -149,22 +137,33 @@ export default function Productos() {
               <button className="modal-close" onClick={() => setModal(false)}>×</button>
             </div>
             <form onSubmit={guardar}>
-              {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+              {formError && <div className="alert alert-error" style={{ marginBottom: 16 }}>{formError}</div>}
               <div className="form-grid">
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>Nombre del producto</label>
                   <input value={form.nombre_Producto} onChange={e => setForm({ ...form, nombre_Producto: e.target.value })} required />
                 </div>
+
                 <div className="form-group">
                   <label>Precio (Q)</label>
-                  <input type="number" step="0.01" min="0" value={form.precio_Producto}
-                    onChange={e => setForm({ ...form, precio_Producto: e.target.value })} required />
+                  <NumberInput
+                    value={form.precio_Producto}
+                    onChange={v => setForm({ ...form, precio_Producto: v })}
+                    min={0}
+                    step={0.5}
+                  />
                 </div>
+
                 <div className="form-group">
                   <label>Stock</label>
-                  <input type="number" min="0" value={form.stock}
-                    onChange={e => setForm({ ...form, stock: e.target.value })} required />
+                  <NumberInput
+                    value={form.stock}
+                    onChange={v => setForm({ ...form, stock: v })}
+                    min={0}
+                    step={1}
+                  />
                 </div>
+
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>Categorías</label>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>

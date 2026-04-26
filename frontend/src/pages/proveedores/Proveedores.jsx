@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
 import { usePermisos } from '../../hooks/usePermisos';
+import { useToast } from '../../hooks/useToast';
+import { ToastContainer } from '../../components/ui/toast/Toast';
 
 const EMPTY = { nombre_Proveedor: '', telefono: '', email: '' };
 
 export default function Proveedores() {
   const { puedeModificar } = usePermisos();
+  const { toasts, removeToast, notify } = useToast();
 
   const [proveedores, setProveedores] = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -13,8 +16,7 @@ export default function Proveedores() {
   const [detModal,    setDetModal]    = useState(null);
   const [form,        setForm]        = useState(EMPTY);
   const [editId,      setEditId]      = useState(null);
-  const [error,       setError]       = useState('');
-  const [success,     setSuccess]     = useState('');
+  const [formError,   setFormError]   = useState('');
 
   async function cargar() {
     setLoading(true);
@@ -23,10 +25,10 @@ export default function Proveedores() {
   }
   useEffect(() => { cargar(); }, []);
 
-  function abrirCrear() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
+  function abrirCrear() { setForm(EMPTY); setEditId(null); setFormError(''); setModal(true); }
   function abrirEditar(p) {
     setForm({ nombre_Proveedor: p.nombre_Proveedor, telefono: p.telefono, email: p.email });
-    setEditId(p.id_Proveedor); setError(''); setModal(true);
+    setEditId(p.id_Proveedor); setFormError(''); setModal(true);
   }
 
   async function verDetalle(p) {
@@ -35,15 +37,15 @@ export default function Proveedores() {
   }
 
   async function guardar(e) {
-    e.preventDefault(); setError('');
+    e.preventDefault(); setFormError('');
     try {
       if (editId) await api.put(`/api/proveedores/${editId}`, form);
       else        await api.post('/api/proveedores', form);
       setModal(false);
-      setSuccess(editId ? 'Proveedor actualizado' : 'Proveedor creado');
-      cargar(); setTimeout(() => setSuccess(''), 3000);
+      notify(editId ? 'Proveedor actualizado correctamente' : 'Proveedor creado correctamente');
+      cargar();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al guardar');
+      setFormError(err.response?.data?.error || 'Error al guardar');
     }
   }
 
@@ -51,24 +53,23 @@ export default function Proveedores() {
     if (!confirm('¿Eliminar este proveedor?')) return;
     try {
       await api.delete(`/api/proveedores/${id}`);
-      setSuccess('Proveedor eliminado'); cargar();
-      setTimeout(() => setSuccess(''), 3000);
+      notify('Proveedor eliminado');
+      cargar();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al eliminar');
+      notify(err.response?.data?.error || 'Error al eliminar', 'error');
     }
   }
 
   return (
     <div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="page-header">
         <h1>🏭 Proveedores</h1>
         {puedeModificar && (
           <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo proveedor</button>
         )}
       </div>
-
-      {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
-      {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
       {loading ? <span className="spinner" /> : (
         <div className="table-wrap">
@@ -115,7 +116,7 @@ export default function Proveedores() {
               <button className="modal-close" onClick={() => setModal(false)}>×</button>
             </div>
             <form onSubmit={guardar}>
-              {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+              {formError && <div className="alert alert-error" style={{ marginBottom: 16 }}>{formError}</div>}
               <div className="form-grid cols-1">
                 <div className="form-group">
                   <label>Nombre</label>

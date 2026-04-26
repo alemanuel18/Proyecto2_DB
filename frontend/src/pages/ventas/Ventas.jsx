@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
 import { usePermisos } from '../../hooks/usePermisos';
+import { useToast } from '../../hooks/useToast';
+import { ToastContainer } from '../../components/ui/toast/Toast';
+import NumberInput from '../../components/ui/numberInput/NumberInput';
 
 export default function Ventas() {
   const { puedeCrearVenta, puedeEliminarVenta } = usePermisos();
+  const { toasts, removeToast, notify } = useToast();
 
   const [ventas,    setVentas]    = useState([]);
   const [clientes,  setClientes]  = useState([]);
@@ -11,8 +15,7 @@ export default function Ventas() {
   const [loading,   setLoading]   = useState(true);
   const [modal,     setModal]     = useState(false);
   const [detModal,  setDetModal]  = useState(null);
-  const [error,     setError]     = useState('');
-  const [success,   setSuccess]   = useState('');
+  const [formError, setFormError] = useState('');
 
   const [idCliente, setIdCliente] = useState('');
   const [detalle,   setDetalle]   = useState([{ id_Producto: '', cantidad: 1 }]);
@@ -22,27 +25,24 @@ export default function Ventas() {
     try {
       const [v, c, p] = await Promise.all([
         api.get('/api/ventas'),
-        api.get('/api/clientes').catch(() => ({ data: [] })),  // vendedor no tiene acceso a /clientes completo
+        api.get('/api/clientes').catch(() => ({ data: [] })),
         api.get('/api/productos'),
       ]);
-      setVentas(v.data);
-      setClientes(c.data);
-      setProductos(p.data);
+      setVentas(v.data); setClientes(c.data); setProductos(p.data);
     } finally { setLoading(false); }
   }
   useEffect(() => { cargar(); }, []);
 
   function addLinea() { setDetalle([...detalle, { id_Producto: '', cantidad: 1 }]); }
   function removeLinea(i) { setDetalle(detalle.filter((_, idx) => idx !== i)); }
-  function setLinea(i, key, val) {
-    setDetalle(detalle.map((d, idx) => idx === i ? { ...d, [key]: val } : d));
-  }
+  function setLineaProd(i, val) { setDetalle(detalle.map((d, idx) => idx === i ? { ...d, id_Producto: val } : d)); }
+  function setLineaCant(i, val) { setDetalle(detalle.map((d, idx) => idx === i ? { ...d, cantidad: val } : d)); }
 
   async function guardar(e) {
-    e.preventDefault(); setError('');
+    e.preventDefault(); setFormError('');
     const lineas = detalle.filter(d => d.id_Producto && d.cantidad > 0);
     if (!idCliente || lineas.length === 0) {
-      return setError('Selecciona un cliente y al menos un producto');
+      return setFormError('Selecciona un cliente y al menos un producto');
     }
     try {
       await api.post('/api/ventas', {
@@ -51,37 +51,32 @@ export default function Ventas() {
       });
       setModal(false);
       setIdCliente(''); setDetalle([{ id_Producto: '', cantidad: 1 }]);
-      setSuccess('Venta registrada correctamente');
+      notify('Venta registrada correctamente');
       cargar();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al registrar venta');
+      setFormError(err.response?.data?.error || 'Error al registrar venta');
     }
   }
 
   async function verDetalle(v) {
-    try {
-      const { data } = await api.get(`/api/ventas/${v.id_Venta}`);
-      setDetModal(data);
-    } catch { setError('No se pudo cargar el detalle'); }
+    try { const { data } = await api.get(`/api/ventas/${v.id_Venta}`); setDetModal(data); }
+    catch { notify('No se pudo cargar el detalle', 'error'); }
   }
 
   async function eliminar(id) {
     if (!confirm('¿Eliminar esta venta? Se restaurará el stock.')) return;
     try {
       await api.delete(`/api/ventas/${id}`);
-      setSuccess('Venta eliminada y stock restaurado'); cargar();
-      setTimeout(() => setSuccess(''), 3000);
+      notify('Venta eliminada y stock restaurado');
+      cargar();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al eliminar');
+      notify(err.response?.data?.error || 'Error al eliminar', 'error');
     }
   }
 
   function exportarCSV() {
     const header = 'ID,Fecha,Vendedor,Cliente,Total\n';
-    const rows = ventas.map(v =>
-      `${v.id_Venta},${v.Fecha},${v.nombre_Usuario},${v.nombre_Cliente},${v.total}`
-    ).join('\n');
+    const rows = ventas.map(v => `${v.id_Venta},${v.Fecha},${v.nombre_Usuario},${v.nombre_Cliente},${v.total}`).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a'); a.href = url; a.download = 'ventas.csv'; a.click();
@@ -90,24 +85,24 @@ export default function Ventas() {
 
   const fmt = n => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2 })}`;
   const precioProducto = id => productos.find(p => p.id_Producto === parseInt(id))?.precio_Producto || 0;
+  const stockProducto  = id => productos.find(p => p.id_Producto === parseInt(id))?.stock || 999;
   const totalEstimado  = detalle.reduce((s, d) => s + (precioProducto(d.id_Producto) * (parseInt(d.cantidad) || 0)), 0);
 
   return (
     <div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="page-header">
         <h1>🛒 Ventas</h1>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-ghost" onClick={exportarCSV}>⬇ Exportar CSV</button>
           {puedeCrearVenta && (
-            <button className="btn btn-primary" onClick={() => { setError(''); setModal(true); }}>
+            <button className="btn btn-primary" onClick={() => { setFormError(''); setModal(true); }}>
               + Nueva venta
             </button>
           )}
         </div>
       </div>
-
-      {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
-      {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
       {loading ? <span className="spinner" /> : (
         <div className="table-wrap">
@@ -153,7 +148,7 @@ export default function Ventas() {
               <button className="modal-close" onClick={() => setModal(false)}>×</button>
             </div>
             <form onSubmit={guardar}>
-              {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+              {formError && <div className="alert alert-error" style={{ marginBottom: 16 }}>{formError}</div>}
 
               <div className="form-group" style={{ marginBottom: 20 }}>
                 <label>Cliente</label>
@@ -163,20 +158,41 @@ export default function Ventas() {
                 </select>
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>Productos</label>
+              <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.5px' }}>
+                Productos
+              </label>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8, marginBottom: 8 }}>
                 {detalle.map((d, i) => (
-                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 90px 32px', gap: 8, alignItems: 'center' }}>
-                    <select value={d.id_Producto} onChange={e => setLinea(i, 'id_Producto', e.target.value)}>
+                  <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 130px 32px', gap: 8, alignItems: 'center' }}>
+                    <select value={d.id_Producto} onChange={e => setLineaProd(i, e.target.value)}>
                       <option value="">— Producto —</option>
-                      {productos.map(p => <option key={p.id_Producto} value={p.id_Producto}>{p.nombre_Producto} (Q{p.precio_Producto})</option>)}
+                      {productos.map(p => (
+                        <option key={p.id_Producto} value={p.id_Producto}>
+                          {p.nombre_Producto} (Q{p.precio_Producto})
+                        </option>
+                      ))}
                     </select>
-                    <input type="number" min="1" value={d.cantidad} onChange={e => setLinea(i, 'cantidad', e.target.value)} placeholder="Cant." />
-                    <button type="button" onClick={() => removeLinea(i)}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+
+                    {/* NumberInput para la cantidad */}
+                    <NumberInput
+                      value={d.cantidad}
+                      onChange={v => setLineaCant(i, v)}
+                      min={1}
+                      max={d.id_Producto ? stockProducto(d.id_Producto) : 999}
+                      step={1}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => removeLinea(i)}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 18, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >×</button>
                   </div>
                 ))}
-                <button type="button" className="btn btn-ghost btn-sm" onClick={addLinea} style={{ alignSelf: 'flex-start' }}>+ Agregar producto</button>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={addLinea} style={{ alignSelf: 'flex-start' }}>
+                  + Agregar producto
+                </button>
               </div>
 
               <div style={{ background: 'var(--surface2)', borderRadius: 8, padding: '10px 14px', marginTop: 8 }}>

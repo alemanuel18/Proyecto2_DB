@@ -1,0 +1,71 @@
+.num-input-wrap {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface2);
+  height: 38px;
+  width: 100%;
+}
+
+.num-btn {
+  flex-shrink: 0;
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  padding: 0;
+}
+
+.num-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.num-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* separador visual entre botón y campo */
+.num-btn-dec {
+  border-right: 1px solid var(--border);
+}
+
+.num-btn-inc {
+  border-left: 1px solid var(--border);
+}
+
+.num-input-field {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 14px;
+  text-align: center;
+  padding: 0 4px;
+  outline: none;
+  border-radius: 0;
+
+  /* ocultar flechas nativas del browser */
+  -moz-appearance: textfield;
+}
+
+.num-input-field::-webkit-outer-spin-button,
+.num-input-field::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* foco: resalta el wrapper, no el input */
+.num-input-wrap:focus-within {
+  border-color: var(--accent);
+}

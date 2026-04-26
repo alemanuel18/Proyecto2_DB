@@ -1,49 +1,46 @@
 import { useEffect, useState } from 'react';
 import api from '../../api';
 import { usePermisos } from '../../hooks/usePermisos';
+import { useToast } from '../../hooks/useToast';
+import { ToastContainer } from '../../components/ui/toast/Toast';
 
 const EMPTY = { nombre_Cliente: '', telefono: '', direccion: '', email: '', NIT: '' };
 
 export default function Clientes() {
   const { puedeModificar } = usePermisos();
+  const { toasts, removeToast, notify } = useToast();
 
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [modal, setModal]       = useState(false);
   const [form, setForm]         = useState(EMPTY);
   const [editId, setEditId]     = useState(null);
-  const [error, setError]       = useState('');
-  const [success, setSuccess]   = useState('');
+  const [formError, setFormError] = useState('');
   const [busqueda, setBusqueda] = useState('');
 
   async function cargar() {
     setLoading(true);
-    try {
-      const { data } = await api.get('/api/clientes');
-      setClientes(data);
-    } catch { }
-    finally { setLoading(false); }
+    try { const { data } = await api.get('/api/clientes'); setClientes(data); }
+    catch { } finally { setLoading(false); }
   }
   useEffect(() => { cargar(); }, []);
 
-  function abrirCrear() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
+  function abrirCrear() { setForm(EMPTY); setEditId(null); setFormError(''); setModal(true); }
   function abrirEditar(c) {
     setForm({ nombre_Cliente: c.nombre_Cliente, telefono: c.telefono, direccion: c.direccion, email: c.email, NIT: c.NIT });
-    setEditId(c.id_Cliente); setError(''); setModal(true);
+    setEditId(c.id_Cliente); setFormError(''); setModal(true);
   }
 
   async function guardar(e) {
-    e.preventDefault();
-    setError('');
+    e.preventDefault(); setFormError('');
     try {
       if (editId) await api.put(`/api/clientes/${editId}`, form);
       else        await api.post('/api/clientes', form);
       setModal(false);
-      setSuccess(editId ? 'Cliente actualizado' : 'Cliente creado');
+      notify(editId ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente');
       cargar();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al guardar');
+      setFormError(err.response?.data?.error || 'Error al guardar');
     }
   }
 
@@ -51,11 +48,10 @@ export default function Clientes() {
     if (!confirm('¿Eliminar este cliente?')) return;
     try {
       await api.delete(`/api/clientes/${id}`);
-      setSuccess('Cliente eliminado');
+      notify('Cliente eliminado');
       cargar();
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al eliminar');
+      notify(err.response?.data?.error || 'Error al eliminar', 'error');
     }
   }
 
@@ -67,15 +63,14 @@ export default function Clientes() {
 
   return (
     <div>
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+
       <div className="page-header">
         <h1>👥 Clientes</h1>
         {puedeModificar && (
           <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo cliente</button>
         )}
       </div>
-
-      {error   && <div className="alert alert-error"   style={{ marginBottom: 16 }}>{error}</div>}
-      {success && <div className="alert alert-success" style={{ marginBottom: 16 }}>{success}</div>}
 
       <div style={{ marginBottom: 16 }}>
         <input placeholder="Buscar por nombre, email o NIT…" value={busqueda}
@@ -125,7 +120,7 @@ export default function Clientes() {
               <button className="modal-close" onClick={() => setModal(false)}>×</button>
             </div>
             <form onSubmit={guardar}>
-              {error && <div className="alert alert-error" style={{ marginBottom: 16 }}>{error}</div>}
+              {formError && <div className="alert alert-error" style={{ marginBottom: 16 }}>{formError}</div>}
               <div className="form-grid">
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label>Nombre</label>

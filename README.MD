@@ -309,3 +309,22 @@ Si cualquier paso falla (stock insuficiente, producto inexistente, error de BD),
 - ✅ Transacción explícita con ROLLBACK en ventas
 - ✅ VIEW utilizado por el backend (`vista_inventario`)
 - ✅ Índices explícitos con justificación
+- ✅ Manejo de estado centralizado con `useReducer` y `Context API` (Auth y Ventas)
+- ✅ Pruebas unitarias integradas con Vitest
+
+---
+
+## Pruebas (Testing)
+
+El proyecto incluye configuración para pruebas unitarias en el frontend utilizando **Vitest** y **React Testing Library**.
+
+Para ejecutar las pruebas localmente:
+
+```bash
+cd frontend
+npm run test
+```
+
+Se han implementado pruebas unitarias para validar la lógica de estado:
+- Pruebas para `authReducer`: validación de las acciones de Login y Logout.
+- Pruebas para `ventasReducer`: validación de la lógica para manipular los productos y cantidades en el carrito de ventas.

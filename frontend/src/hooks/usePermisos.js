@@ -6,16 +6,11 @@
  *   2 = Vendedor       → solo Ventas (ver + crear)
  *   4 = Supervisor     → ver todo, sin modificar
  */
-import { useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export function usePermisos() {
-  const usuario = useMemo(() => {
-    try {
-      return JSON.parse(localStorage.getItem('usuario') || '{}');
-    } catch {
-      return {};
-    }
-  }, []);
+  const { state } = useAuth();
+  const usuario = state.usuario || {};
 
   const rol = usuario.id_Rol;
 

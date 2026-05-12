@@ -1,9 +1,11 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { usePermisos } from '../../hooks/usePermisos';
+import { useAuth } from '../../context/AuthContext';
 import './Layout.css';
 
 export default function Layout() {
   const navigate  = useNavigate();
+  const { logout: contextLogout } = useAuth();
   const { usuario, verVentas, verClientes, verProductos, verProveedores, verReportes } = usePermisos();
 
   const NAV = [
@@ -16,8 +18,7 @@ export default function Layout() {
   ].filter(item => item.visible);
 
   function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
+    contextLogout();
     navigate('/login');
   }
 

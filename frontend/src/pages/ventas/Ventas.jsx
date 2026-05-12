@@ -1,65 +1,71 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer } from 'react';
 import api from '../../api';
 import { usePermisos } from '../../hooks/usePermisos';
 import { useToast } from '../../hooks/useToast';
 import { ToastContainer } from '../../components/ui/toast/Toast';
 import NumberInput from '../../components/ui/numberInput/NumberInput';
+import { ventasReducer, initialState, VENTAS_ACTIONS } from '../../reducers/ventasReducer';
 
 export default function Ventas() {
   const { puedeCrearVenta, puedeEliminarVenta } = usePermisos();
   const { toasts, removeToast, notify } = useToast();
 
-  const [ventas,    setVentas]    = useState([]);
-  const [clientes,  setClientes]  = useState([]);
-  const [productos, setProductos] = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [modal,     setModal]     = useState(false);
-  const [detModal,  setDetModal]  = useState(null);
-  const [formError, setFormError] = useState('');
-
-  const [idCliente, setIdCliente] = useState('');
-  const [detalle,   setDetalle]   = useState([{ id_Producto: '', cantidad: 1 }]);
+  const [state, dispatch] = useReducer(ventasReducer, initialState);
+  const {
+    ventas, clientes, productos, loading, modal,
+    detModal, formError, idCliente, detalle
+  } = state;
 
   async function cargar() {
-    setLoading(true);
+    dispatch({ type: VENTAS_ACTIONS.SET_LOADING, payload: true });
     try {
       const [v, c, p] = await Promise.all([
         api.get('/api/ventas'),
         api.get('/api/clientes').catch(() => ({ data: [] })),
         api.get('/api/productos'),
       ]);
-      setVentas(v.data); setClientes(c.data); setProductos(p.data);
-    } finally { setLoading(false); }
+      dispatch({ 
+        type: VENTAS_ACTIONS.FETCH_SUCCESS, 
+        payload: { ventas: v.data, clientes: c.data, productos: p.data }
+      });
+    } catch {
+      dispatch({ type: VENTAS_ACTIONS.SET_LOADING, payload: false });
+    }
   }
+  
   useEffect(() => { cargar(); }, []);
 
-  function addLinea() { setDetalle([...detalle, { id_Producto: '', cantidad: 1 }]); }
-  function removeLinea(i) { setDetalle(detalle.filter((_, idx) => idx !== i)); }
-  function setLineaProd(i, val) { setDetalle(detalle.map((d, idx) => idx === i ? { ...d, id_Producto: val } : d)); }
-  function setLineaCant(i, val) { setDetalle(detalle.map((d, idx) => idx === i ? { ...d, cantidad: val } : d)); }
+  function addLinea() { dispatch({ type: VENTAS_ACTIONS.ADD_LINEA }); }
+  function removeLinea(i) { dispatch({ type: VENTAS_ACTIONS.REMOVE_LINEA, payload: i }); }
+  function setLineaProd(i, val) { dispatch({ type: VENTAS_ACTIONS.SET_LINEA_PROD, payload: { index: i, val } }); }
+  function setLineaCant(i, val) { dispatch({ type: VENTAS_ACTIONS.SET_LINEA_CANT, payload: { index: i, val } }); }
 
   async function guardar(e) {
-    e.preventDefault(); setFormError('');
+    e.preventDefault(); 
+    dispatch({ type: VENTAS_ACTIONS.SET_ERROR, payload: '' });
+    
     const lineas = detalle.filter(d => d.id_Producto && d.cantidad > 0);
     if (!idCliente || lineas.length === 0) {
-      return setFormError('Selecciona un cliente y al menos un producto');
+      return dispatch({ type: VENTAS_ACTIONS.SET_ERROR, payload: 'Selecciona un cliente y al menos un producto' });
     }
     try {
       await api.post('/api/ventas', {
         id_Cliente: parseInt(idCliente),
         detalle: lineas.map(d => ({ id_Producto: parseInt(d.id_Producto), cantidad: parseInt(d.cantidad) })),
       });
-      setModal(false);
-      setIdCliente(''); setDetalle([{ id_Producto: '', cantidad: 1 }]);
+      dispatch({ type: VENTAS_ACTIONS.RESET_FORM });
       notify('Venta registrada correctamente');
       cargar();
     } catch (err) {
-      setFormError(err.response?.data?.error || 'Error al registrar venta');
+      dispatch({ type: VENTAS_ACTIONS.SET_ERROR, payload: err.response?.data?.error || 'Error al registrar venta' });
     }
   }
 
   async function verDetalle(v) {
-    try { const { data } = await api.get(`/api/ventas/${v.id_Venta}`); setDetModal(data); }
+    try { 
+      const { data } = await api.get(`/api/ventas/${v.id_Venta}`); 
+      dispatch({ type: VENTAS_ACTIONS.OPEN_DET_MODAL, payload: data }); 
+    }
     catch { notify('No se pudo cargar el detalle', 'error'); }
   }
 
@@ -97,7 +103,7 @@ export default function Ventas() {
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-ghost" onClick={exportarCSV}>⬇ Exportar CSV</button>
           {puedeCrearVenta && (
-            <button className="btn btn-primary" onClick={() => { setFormError(''); setModal(true); }}>
+            <button className="btn btn-primary" onClick={() => dispatch({ type: VENTAS_ACTIONS.OPEN_MODAL })}>
               + Nueva venta
             </button>
           )}
@@ -141,18 +147,18 @@ export default function Ventas() {
 
       {/* Modal nueva venta */}
       {modal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && dispatch({ type: VENTAS_ACTIONS.CLOSE_MODAL })}>
           <div className="modal" style={{ maxWidth: 620 }}>
             <div className="modal-header">
               <h2>Nueva venta</h2>
-              <button className="modal-close" onClick={() => setModal(false)}>×</button>
+              <button className="modal-close" onClick={() => dispatch({ type: VENTAS_ACTIONS.CLOSE_MODAL })}>×</button>
             </div>
             <form onSubmit={guardar}>
               {formError && <div className="alert alert-error" style={{ marginBottom: 16 }}>{formError}</div>}
 
               <div className="form-group" style={{ marginBottom: 20 }}>
                 <label>Cliente</label>
-                <select value={idCliente} onChange={e => setIdCliente(e.target.value)} required>
+                <select value={idCliente} onChange={e => dispatch({ type: VENTAS_ACTIONS.SET_CLIENTE, payload: e.target.value })} required>
                   <option value="">— Seleccionar cliente —</option>
                   {clientes.map(c => <option key={c.id_Cliente} value={c.id_Cliente}>{c.nombre_Cliente}</option>)}
                 </select>
@@ -174,7 +180,6 @@ export default function Ventas() {
                       ))}
                     </select>
 
-                    {/* NumberInput para la cantidad */}
                     <NumberInput
                       value={d.cantidad}
                       onChange={v => setLineaCant(i, v)}
@@ -201,7 +206,7 @@ export default function Ventas() {
               </div>
 
               <div className="modal-footer">
-                <button type="button" className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
+                <button type="button" className="btn btn-ghost" onClick={() => dispatch({ type: VENTAS_ACTIONS.CLOSE_MODAL })}>Cancelar</button>
                 <button type="submit" className="btn btn-primary">Registrar venta</button>
               </div>
             </form>
@@ -211,11 +216,11 @@ export default function Ventas() {
 
       {/* Modal detalle venta */}
       {detModal && (
-        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDetModal(null)}>
+        <div className="modal-overlay" onClick={e => e.target === e.currentTarget && dispatch({ type: VENTAS_ACTIONS.CLOSE_DET_MODAL })}>
           <div className="modal" style={{ maxWidth: 560 }}>
             <div className="modal-header">
               <h2>Venta #{detModal.id_Venta}</h2>
-              <button className="modal-close" onClick={() => setDetModal(null)}>×</button>
+              <button className="modal-close" onClick={() => dispatch({ type: VENTAS_ACTIONS.CLOSE_DET_MODAL })}>×</button>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20, fontSize: 13 }}>
               <div><span style={{ color: 'var(--text-muted)' }}>Fecha: </span>{new Date(detModal.Fecha).toLocaleDateString('es-GT')}</div>

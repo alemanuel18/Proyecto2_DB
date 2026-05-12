@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
 import Layout     from './components/layout/Layout';
 import Login      from './pages/login/Login';
 import Dashboard  from './pages/dashboard/Dashboard';
@@ -10,8 +11,8 @@ import Proveedores from './pages/proveedores/Proveedores';
 
 // Ruta protegida: redirige a /login si no hay token
 function PrivateRoute({ children }) {
-  const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" replace />;
+  const { state } = useAuth();
+  return state.isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {

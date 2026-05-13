@@ -28,7 +28,7 @@ services:
     env_file: .env
     environment:
       DB_HOST: db
-      DB_PORT: 3306
+      DB_PORT: ${DB_PORT:-3306}
       DB_NAME: ${MYSQL_DATABASE}
       DB_USER: ${MYSQL_USER}
       DB_PASSWORD: ${MYSQL_PASSWORD}
@@ -48,7 +48,7 @@ services:
     container_name: tienda_frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: http://localhost:3001
+      VITE_API_URL: ${VITE_API_URL}
     ports:
       - "5173:5173"
     depends_on:

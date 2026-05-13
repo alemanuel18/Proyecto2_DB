@@ -1,49 +1,50 @@
 require('dotenv').config();
-const express    = require('express');
-const cors       = require('cors');
-const mysql      = require('mysql2/promise');
+const express = require('express');
+const cors = require('cors');
+const mysql = require('mysql2/promise');
 
 // ── Rutas ────────────────────────────────────────────────────
-const authRouter       = require('./routes/auth');
-const clientesRouter   = require('./routes/clientes');
-const productosRouter  = require('./routes/productos');
-const ventasRouter     = require('./routes/ventas');
-const reportesRouter   = require('./routes/reportes');
+const authRouter = require('./routes/auth');
+const clientesRouter = require('./routes/clientes');
+const productosRouter = require('./routes/productos');
+const ventasRouter = require('./routes/ventas');
+const reportesRouter = require('./routes/reportes');
 const categoriasRouter = require('./routes/categorias');
-const proveedoresRouter= require('./routes/proveedores');
+const proveedoresRouter = require('./routes/proveedores');
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3001;
 
 // ── Middlewares globales ─────────────────────────────────────
 app.use(cors({
-  origin: 'http://localhost:5173',   // URL del frontend Vite
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',   // URL del frontend Vite
+  optionsSuccessStatus: 200,
   credentials: true
 }));
 app.use(express.json());
 
 // ── Pool de conexiones MySQL ─────────────────────────────────
 const pool = mysql.createPool({
-  host    : process.env.DB_HOST,
-  port    : process.env.DB_PORT     || 3306,
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT || 3306,
   database: process.env.DB_NAME,
-  user    : process.env.DB_USER,
+  user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   waitForConnections: true,
-  connectionLimit   : 10,
-  queueLimit        : 0
+  connectionLimit: 10,
+  queueLimit: 0
 });
 
 // Exponemos el pool para que las rutas lo importen
 app.locals.db = pool;
 
 // ── Rutas de la API ──────────────────────────────────────────
-app.use('/api/auth',        authRouter);
-app.use('/api/clientes',    clientesRouter);
-app.use('/api/productos',   productosRouter);
-app.use('/api/ventas',      ventasRouter);
-app.use('/api/reportes',    reportesRouter);
-app.use('/api/categorias',  categoriasRouter);
+app.use('/api/auth', authRouter);
+app.use('/api/clientes', clientesRouter);
+app.use('/api/productos', productosRouter);
+app.use('/api/ventas', ventasRouter);
+app.use('/api/reportes', reportesRouter);
+app.use('/api/categorias', categoriasRouter);
 app.use('/api/proveedores', proveedoresRouter);
 
 // ── Health check ─────────────────────────────────────────────

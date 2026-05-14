@@ -84,47 +84,24 @@ http://localhost:5173
 
 ---
 
-## Roles y permisos
+## Matriz de Roles (Nivel Base de Datos)
 
-El sistema implementa control de acceso basado en roles. Cada usuario solo puede ver y realizar las acciones que su rol permite.
+El sistema implementa control de acceso granular a nivel de base de datos (`tienda_db`). Cada rol tiene permisos específicos usando `GRANT` sobre las tablas.
 
-### Administrador
-Acceso total al sistema.
+| Rol | Tablas Accesibles | Operaciones Permitidas |
+|---|---|---|
+| **Administrador** | Todas | `ALL PRIVILEGES` |
+| **Vendedor** | `Cliente`, `Producto` | `SELECT` |
+| | `Venta`, `Detalle`, `Cliente` | `SELECT`, `INSERT`, `UPDATE` |
+| **Bodeguero** | `Categoria`, `Proveedor`, `Categoria_Producto`, `Proveedor_Producto` | `SELECT` |
+| | `Producto` | `SELECT`, `INSERT`, `UPDATE` |
+| **Supervisor** | Todas | `SELECT` |
+| | `Proveedor`, `Cliente`, `Categoria` | `INSERT`, `UPDATE` |
+| **Cajero** | `Cliente`, `Producto` | `SELECT` |
+| | `Venta`, `Detalle` | `SELECT`, `INSERT`, `UPDATE` |
 
-| Sección | Ver | Crear | Editar | Eliminar |
-|---|---|---|---|---|
-| Dashboard | ✅ | — | — | — |
-| Ventas | ✅ | ✅ | — | ✅ |
-| Productos | ✅ | ✅ | ✅ | ✅ |
-| Clientes | ✅ | ✅ | ✅ | ✅ |
-| Proveedores | ✅ | ✅ | ✅ | ✅ |
-| Reportes | ✅ | — | — | — |
-
-### Vendedor
-Solo tiene acceso a la sección de Ventas. Puede registrar nuevas ventas y eliminarlas, pero no puede acceder al resto del sistema.
-
-| Sección | Ver | Crear | Editar | Eliminar |
-|---|---|---|---|---|
-| Dashboard | ✅ | — | — | — |
-| Ventas | ✅ | ✅ | — | ❌ |
-| Productos | ❌ | ❌ | ❌ | ❌ |
-| Clientes | ❌ | ❌ | ❌ | ❌ |
-| Proveedores | ❌ | ❌ | ❌ | ❌ |
-| Reportes | ❌ | — | — | — |
-
-### Supervisor
-Puede ver todas las secciones del sistema en modo lectura. No puede crear, editar ni eliminar ningún registro.
-
-| Sección | Ver | Crear | Editar | Eliminar |
-|---|---|---|---|---|
-| Dashboard | ✅ | — | — | — |
-| Ventas | ✅ | ❌ | — | ❌ |
-| Productos | ✅ | ❌ | ❌ | ❌ |
-| Clientes | ✅ | ❌ | ❌ | ❌ |
-| Proveedores | ✅ | ❌ | ❌ | ❌ |
-| Reportes | ✅ | — | — | — |
-
-> Los permisos se aplican en dos capas: el **frontend** oculta los botones de acción según el rol, y el **backend** rechaza con `403 Forbidden` cualquier intento de modificación no autorizado.
+> [!NOTE]
+> La capa del backend también cuenta con un `roleMiddleware.js` que verifica el tipo de usuario mediante el token JWT y restringe los endpoints antes de llegar a la base de datos, actuando como una doble capa de seguridad.
 
 ---
 

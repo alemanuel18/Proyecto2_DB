@@ -7,7 +7,7 @@ import { ToastContainer } from '../../components/ui/toast/Toast';
 const EMPTY = { nombre_Proveedor: '', telefono: '', email: '' };
 
 export default function Proveedores() {
-  const { puedeModificar } = usePermisos();
+  const { puedeModificarProveedor } = usePermisos();
   const { toasts, removeToast, notify } = useToast();
 
   const [proveedores, setProveedores] = useState([]);
@@ -66,7 +66,7 @@ export default function Proveedores() {
 
       <div className="page-header">
         <h1>🏭 Proveedores</h1>
-        {puedeModificar && (
+        {puedeModificarProveedor && (
           <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo proveedor</button>
         )}
       </div>
@@ -93,7 +93,7 @@ export default function Proveedores() {
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => verDetalle(p)}>Ver</button>
-                      {puedeModificar && (
+                      {puedeModificarProveedor && (
                         <>
                           <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
                           <button className="btn btn-danger btn-sm" onClick={() => eliminar(p.id_Proveedor)}>Eliminar</button>
@@ -108,7 +108,7 @@ export default function Proveedores() {
         </div>
       )}
 
-      {modal && puedeModificar && (
+      {modal && puedeModificarProveedor && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">

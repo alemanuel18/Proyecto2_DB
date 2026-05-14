@@ -1,0 +1,96 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Rol {
+  id_Rol     Int       @id @default(autoincrement())
+  nombre_Rol String    @db.VarChar(50)
+  usuarios   Usuario[]
+}
+
+model Usuario {
+  id_Usuario     Int     @id @default(autoincrement())
+  nombre_Usuario String  @db.VarChar(100)
+  password       String  @db.VarChar(255)
+  id_Rol         Int
+  rol            Rol     @relation(fields: [id_Rol], references: [id_Rol])
+  ventas         Venta[]
+}
+
+model Cliente {
+  id_Cliente     Int     @id @default(autoincrement())
+  nombre_Cliente String  @db.VarChar(150)
+  telefono       String  @db.VarChar(20)
+  direccion      String  @db.VarChar(255)
+  email          String  @db.VarChar(150)
+  NIT            String  @db.VarChar(20)
+  ventas         Venta[]
+}
+
+model Venta {
+  id_Venta   Int       @id @default(autoincrement())
+  Fecha      DateTime  @db.Date
+  id_Usuario Int
+  id_Cliente Int
+  usuario    Usuario   @relation(fields: [id_Usuario], references: [id_Usuario])
+  cliente    Cliente   @relation(fields: [id_Cliente], references: [id_Cliente])
+  detalles   Detalle[]
+}
+
+model Categoria {
+  id_Categoria     Int                  @id @default(autoincrement())
+  nombre_Categoria String               @db.VarChar(100)
+  productos        Categoria_Producto[]
+}
+
+model Proveedor {
+  id_Proveedor     Int                  @id @default(autoincrement())
+  nombre_Proveedor String               @db.VarChar(150)
+  telefono         String               @db.VarChar(20)
+  email            String               @db.VarChar(150)
+  productos        Proveedor_Producto[]
+}
+
+model Producto {
+  id_Producto     Int                  @id @default(autoincrement())
+  nombre_Producto String               @db.VarChar(150)
+  precio_Producto Decimal              @db.Decimal(10, 2)
+  stock           Int
+  detalles        Detalle[]
+  categorias      Categoria_Producto[]
+  proveedores     Proveedor_Producto[]
+}
+
+model Categoria_Producto {
+  id_Categoria Int
+  id_Producto  Int
+  categoria    Categoria @relation(fields: [id_Categoria], references: [id_Categoria])
+  producto     Producto  @relation(fields: [id_Producto], references: [id_Producto])
+
+  @@id([id_Categoria, id_Producto])
+}
+
+model Proveedor_Producto {
+  id_Proveedor Int
+  id_Producto  Int
+  proveedor    Proveedor @relation(fields: [id_Proveedor], references: [id_Proveedor])
+  producto     Producto  @relation(fields: [id_Producto], references: [id_Producto])
+
+  @@id([id_Proveedor, id_Producto])
+}
+
+model Detalle {
+  id_Detalle    Int      @id @default(autoincrement())
+  cantidad      Int
+  precio_actual Decimal  @db.Decimal(10, 2)
+  id_Venta      Int
+  id_Producto   Int
+  venta         Venta    @relation(fields: [id_Venta], references: [id_Venta])
+  producto      Producto @relation(fields: [id_Producto], references: [id_Producto])
+}

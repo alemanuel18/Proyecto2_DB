@@ -7,7 +7,7 @@ import { ToastContainer } from '../../components/ui/toast/Toast';
 const EMPTY = { nombre_Cliente: '', telefono: '', direccion: '', email: '', NIT: '' };
 
 export default function Clientes() {
-  const { puedeModificar } = usePermisos();
+  const { puedeModificarCliente } = usePermisos();
   const { toasts, removeToast, notify } = useToast();
 
   const [clientes, setClientes] = useState([]);
@@ -67,7 +67,7 @@ export default function Clientes() {
 
       <div className="page-header">
         <h1>👥 Clientes</h1>
-        {puedeModificar && (
+        {puedeModificarCliente && (
           <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo cliente</button>
         )}
       </div>
@@ -83,12 +83,12 @@ export default function Clientes() {
             <thead>
               <tr>
                 <th>Nombre</th><th>Teléfono</th><th>Email</th><th>NIT</th><th>Dirección</th>
-                {puedeModificar && <th>Acciones</th>}
+                {puedeModificarCliente && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 && (
-                <tr><td colSpan={puedeModificar ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
+                <tr><td colSpan={puedeModificarCliente ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
               )}
               {filtrados.map(c => (
                 <tr key={c.id_Cliente}>
@@ -97,7 +97,7 @@ export default function Clientes() {
                   <td>{c.email}</td>
                   <td style={{ fontFamily: 'var(--mono)' }}>{c.NIT}</td>
                   <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{c.direccion}</td>
-                  {puedeModificar && (
+                  {puedeModificarCliente && (
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(c)}>Editar</button>
@@ -112,7 +112,7 @@ export default function Clientes() {
         </div>
       )}
 
-      {modal && puedeModificar && (
+      {modal && puedeModificarCliente && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">

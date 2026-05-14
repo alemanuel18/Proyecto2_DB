@@ -8,5 +8,9 @@ export default defineConfig({
     allowedHosts: [
       process.env.VITE_ALLOWED_HOST || 'localhost'
     ]
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true
   }
 })

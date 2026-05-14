@@ -8,7 +8,7 @@ import NumberInput from '../../components/ui/numberInput/NumberInput';
 const EMPTY = { nombre_Producto: '', precio_Producto: '', stock: '', categorias: [] };
 
 export default function Productos() {
-  const { puedeModificar } = usePermisos();
+  const { puedeModificarProducto } = usePermisos();
   const { toasts, removeToast, notify } = useToast();
 
   const [productos,  setProductos]  = useState([]);
@@ -84,7 +84,7 @@ export default function Productos() {
 
       <div className="page-header">
         <h1>📦 Productos</h1>
-        {puedeModificar && (
+        {puedeModificarProducto && (
           <button className="btn btn-primary" onClick={abrirCrear}>+ Nuevo producto</button>
         )}
       </div>
@@ -100,12 +100,12 @@ export default function Productos() {
             <thead>
               <tr>
                 <th>Producto</th><th>Categorías</th><th>Precio</th><th>Stock</th><th>Estado</th>
-                {puedeModificar && <th>Acciones</th>}
+                {puedeModificarProducto && <th>Acciones</th>}
               </tr>
             </thead>
             <tbody>
               {filtrados.length === 0 && (
-                <tr><td colSpan={puedeModificar ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
+                <tr><td colSpan={puedeModificarProducto ? 6 : 5} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>Sin resultados</td></tr>
               )}
               {filtrados.map(p => (
                 <tr key={p.id_Producto}>
@@ -114,7 +114,7 @@ export default function Productos() {
                   <td style={{ fontFamily: 'var(--mono)' }}>{fmt(p.precio_Producto)}</td>
                   <td style={{ fontFamily: 'var(--mono)' }}>{p.stock}</td>
                   <td>{stockBadge(p.stock)}</td>
-                  {puedeModificar && (
+                  {puedeModificarProducto && (
                     <td>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(p)}>Editar</button>
@@ -129,7 +129,7 @@ export default function Productos() {
         </div>
       )}
 
-      {modal && puedeModificar && (
+      {modal && puedeModificarProducto && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal">
             <div className="modal-header">

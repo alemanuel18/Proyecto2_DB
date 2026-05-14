@@ -3,45 +3,40 @@ const router       = express.Router();
 const auth         = require('../middleware/authMiddleware');
 const requireRole  = require('../middleware/roleMiddleware');
 
-// 1=Admin  2=Vendedor (solo lectura, necesita clientes para crear ventas)  4=Supervisor
-const LECTURA   = [1, 2, 4];
-const ESCRITURA = [1];
+// Roles: 1=Admin, 2=Vendedor, 3=Bodeguero, 4=Supervisor, 5=Cajero
+const LECTURA   = [1, 2, 4, 5]; // Admin, Vendedor, Supervisor, Cajero
+const ESCRITURA = [1, 2, 4];    // Admin, Vendedor, Supervisor
 
 router.use(auth);
 
-// GET /api/clientes  — Admin, Supervisor
+// GET /api/clientes
 router.get('/', requireRole(LECTURA), async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
-    const [rows] = await db.query(
-      `SELECT id_Cliente, nombre_Cliente, telefono, direccion, email, NIT
-       FROM Cliente
-       ORDER BY nombre_Cliente`
-    );
-    res.json(rows);
+    const prisma = req.app.locals.prisma;
+    const clientes = await prisma.cliente.findMany({
+      orderBy: { nombre_Cliente: 'asc' },
+    });
+    res.json(clientes);
   } catch (err) {
     next(err);
   }
 });
 
-// GET /api/clientes/:id  — Admin, Supervisor
+// GET /api/clientes/:id
 router.get('/:id', requireRole(LECTURA), async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
-    const [rows] = await db.query(
-      `SELECT id_Cliente, nombre_Cliente, telefono, direccion, email, NIT
-       FROM Cliente
-       WHERE id_Cliente = ?`,
-      [req.params.id]
-    );
-    if (rows.length === 0) return res.status(404).json({ error: 'Cliente no encontrado' });
-    res.json(rows[0]);
+    const prisma = req.app.locals.prisma;
+    const cliente = await prisma.cliente.findUnique({
+      where: { id_Cliente: Number(req.params.id) },
+    });
+    if (!cliente) return res.status(404).json({ error: 'Cliente no encontrado' });
+    res.json(cliente);
   } catch (err) {
     next(err);
   }
 });
 
-// POST /api/clientes  — solo Admin
+// POST /api/clientes
 router.post('/', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Cliente, telefono, direccion, email, NIT } = req.body;
 
@@ -50,19 +45,23 @@ router.post('/', requireRole(ESCRITURA), async (req, res, next) => {
   }
 
   try {
-    const db = req.app.locals.db;
-    const [result] = await db.query(
-      `INSERT INTO Cliente (nombre_Cliente, telefono, direccion, email, NIT)
-       VALUES (?, ?, ?, ?, ?)`,
-      [nombre_Cliente, telefono, direccion, email, NIT]
-    );
-    res.status(201).json({ id_Cliente: result.insertId, mensaje: 'Cliente creado' });
+    const prisma = req.app.locals.prisma;
+    const result = await prisma.cliente.create({
+      data: {
+        nombre_Cliente,
+        telefono,
+        direccion,
+        email,
+        NIT,
+      },
+    });
+    res.status(201).json({ id_Cliente: result.id_Cliente, mensaje: 'Cliente creado' });
   } catch (err) {
     next(err);
   }
 });
 
-// PUT /api/clientes/:id  — solo Admin
+// PUT /api/clientes/:id
 router.put('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   const { nombre_Cliente, telefono, direccion, email, NIT } = req.body;
 
@@ -71,31 +70,38 @@ router.put('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   }
 
   try {
-    const db = req.app.locals.db;
-    const [result] = await db.query(
-      `UPDATE Cliente
-       SET nombre_Cliente = ?, telefono = ?, direccion = ?, email = ?, NIT = ?
-       WHERE id_Cliente = ?`,
-      [nombre_Cliente, telefono, direccion, email, NIT, req.params.id]
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const prisma = req.app.locals.prisma;
+    await prisma.cliente.update({
+      where: { id_Cliente: Number(req.params.id) },
+      data: {
+        nombre_Cliente,
+        telefono,
+        direccion,
+        email,
+        NIT,
+      },
+    });
     res.json({ mensaje: 'Cliente actualizado' });
   } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
     next(err);
   }
 });
 
-// DELETE /api/clientes/:id  — solo Admin
+// DELETE /api/clientes/:id
 router.delete('/:id', requireRole(ESCRITURA), async (req, res, next) => {
   try {
-    const db = req.app.locals.db;
-    const [result] = await db.query(
-      `DELETE FROM Cliente WHERE id_Cliente = ?`,
-      [req.params.id]
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Cliente no encontrado' });
+    const prisma = req.app.locals.prisma;
+    await prisma.cliente.delete({
+      where: { id_Cliente: Number(req.params.id) },
+    });
     res.json({ mensaje: 'Cliente eliminado' });
   } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
     next(err);
   }
 });

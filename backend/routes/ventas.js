@@ -73,94 +73,50 @@ router.post('/', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
     return res.status(400).json({ error: 'id_Cliente y al menos un producto son requeridos' });
   }
 
-  const conn = await req.app.locals.db.getConnection();
   try {
-    await conn.beginTransaction();
+    const db = req.app.locals.db;
+    
+    // Convertir el arreglo de detalles a string JSON
+    const detallesJSON = JSON.stringify(detalle.map(d => ({
+        id_producto: d.id_Producto,
+        cantidad: d.cantidad
+    })));
 
-    const [ventaResult] = await conn.query(
-      `INSERT INTO Venta (Fecha, id_Usuario, id_Cliente) VALUES (CURDATE(), ?, ?)`,
-      [id_Usuario, id_Cliente]
-    );
-    const id_Venta = ventaResult.insertId;
+    // Invocar el Stored Procedure
+    await db.query(`CALL crear_venta(?, ?, ?, @p_id_venta, @p_estado)`, [id_Cliente, id_Usuario, detallesJSON]);
+    
+    // Obtener los parámetros de salida
+    const [[{ p_id_venta, p_estado }]] = await db.query(`SELECT @p_id_venta AS p_id_venta, @p_estado AS p_estado`);
 
-    for (const item of detalle) {
-      const { id_Producto, cantidad } = item;
-
-      if (!id_Producto || !cantidad || cantidad <= 0) {
-        throw Object.assign(new Error('Producto o cantidad inválidos'), { status: 400 });
-      }
-
-      const [prod] = await conn.query(
-        `SELECT stock, precio_Producto FROM Producto WHERE id_Producto = ? FOR UPDATE`,
-        [id_Producto]
-      );
-      if (prod.length === 0) {
-        throw Object.assign(new Error(`Producto ${id_Producto} no existe`), { status: 404 });
-      }
-      if (prod[0].stock < cantidad) {
-        throw Object.assign(
-          new Error(`Stock insuficiente para el producto ${id_Producto} (disponible: ${prod[0].stock})`),
-          { status: 400 }
-        );
-      }
-
-      await conn.query(
-        `INSERT INTO Detalle (cantidad, precio_actual, id_Venta, id_Producto)
-         VALUES (?, ?, ?, ?)`,
-        [cantidad, prod[0].precio_Producto, id_Venta, id_Producto]
-      );
-
-      await conn.query(
-        `UPDATE Producto SET stock = stock - ? WHERE id_Producto = ?`,
-        [cantidad, id_Producto]
-      );
+    if (p_estado && p_estado.startsWith('ERROR')) {
+      return res.status(400).json({ error: p_estado });
     }
 
-    await conn.commit();
-    res.status(201).json({ id_Venta, mensaje: 'Venta registrada correctamente' });
+    res.status(201).json({ id_Venta: p_id_venta, mensaje: p_estado });
 
   } catch (err) {
-    await conn.rollback();
     next(err);
-  } finally {
-    conn.release();
   }
 });
 
 // DELETE /api/ventas/:id  — solo Admin y Vendedor
 router.delete('/:id', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
-  const conn = await req.app.locals.db.getConnection();
   try {
-    await conn.beginTransaction();
+    const db = req.app.locals.db;
+    
+    // Invocar el Stored Procedure
+    await db.query(`CALL eliminar_venta_restaurar_stock(?, @p_estado)`, [req.params.id]);
+    
+    // Obtener los parámetros de salida
+    const [[{ p_estado }]] = await db.query(`SELECT @p_estado AS p_estado`);
 
-    const [detalle] = await conn.query(
-      `SELECT id_Producto, cantidad FROM Detalle WHERE id_Venta = ?`,
-      [req.params.id]
-    );
-    for (const item of detalle) {
-      await conn.query(
-        `UPDATE Producto SET stock = stock + ? WHERE id_Producto = ?`,
-        [item.cantidad, item.id_Producto]
-      );
+    if (p_estado && p_estado.startsWith('ERROR')) {
+      return res.status(400).json({ error: p_estado });
     }
 
-    await conn.query(`DELETE FROM Detalle WHERE id_Venta = ?`, [req.params.id]);
-    const [result] = await conn.query(
-      `DELETE FROM Venta WHERE id_Venta = ?`, [req.params.id]
-    );
-
-    if (result.affectedRows === 0) {
-      await conn.rollback();
-      return res.status(404).json({ error: 'Venta no encontrada' });
-    }
-
-    await conn.commit();
-    res.json({ mensaje: 'Venta eliminada y stock restaurado' });
+    res.json({ mensaje: p_estado });
   } catch (err) {
-    await conn.rollback();
     next(err);
-  } finally {
-    conn.release();
   }
 });
 

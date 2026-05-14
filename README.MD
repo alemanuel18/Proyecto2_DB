@@ -80,7 +80,9 @@ http://localhost:5173
 |---|---|---|
 | `carlos.mendez` | `Pass1234` | Administrador |
 | `ana.garcia` | `Pass1234` | Vendedor |
+| `maria.juarez` | `Pass1234` | Bodeguero |
 | `jose.perez` | `Pass1234` | Supervisor |
+| `roberto.castillo` | `Pass1234` | Cajero |
 
 ---
 

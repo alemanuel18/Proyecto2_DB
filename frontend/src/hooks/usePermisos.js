@@ -19,7 +19,7 @@ export function usePermisos() {
     }
   }, []);
 
-  const rol = usuario.id_Rol;
+  const rol = Number(usuario.id_Rol);
 
   return {
     usuario,
@@ -39,6 +39,7 @@ export function usePermisos() {
 
     // Acciones de escritura
     puedeCrearVenta:         [1, 2, 5].includes(rol),
+    puedeModificarVenta:     [1, 2, 5].includes(rol),
     puedeEliminarVenta:      [1].includes(rol),
     puedeModificarCliente:   [1, 2, 4].includes(rol),
     puedeModificarProducto:  [1, 3].includes(rol),

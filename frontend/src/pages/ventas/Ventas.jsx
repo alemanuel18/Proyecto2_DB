@@ -6,7 +6,7 @@ import { ToastContainer } from '../../components/ui/toast/Toast';
 import NumberInput from '../../components/ui/numberInput/NumberInput';
 
 export default function Ventas() {
-  const { puedeCrearVenta, puedeEliminarVenta } = usePermisos();
+  const { puedeCrearVenta, puedeModificarVenta, puedeEliminarVenta } = usePermisos();
   const { toasts, removeToast, notify } = useToast();
 
   const [ventas,    setVentas]    = useState([]);
@@ -15,6 +15,7 @@ export default function Ventas() {
   const [loading,   setLoading]   = useState(true);
   const [modal,     setModal]     = useState(false);
   const [detModal,  setDetModal]  = useState(null);
+  const [editId,    setEditId]    = useState(null);
   const [formError, setFormError] = useState('');
 
   const [idCliente, setIdCliente] = useState('');
@@ -38,6 +39,19 @@ export default function Ventas() {
   function setLineaProd(i, val) { setDetalle(detalle.map((d, idx) => idx === i ? { ...d, id_Producto: val } : d)); }
   function setLineaCant(i, val) { setDetalle(detalle.map((d, idx) => idx === i ? { ...d, cantidad: val } : d)); }
 
+  async function abrirEditar(v) {
+    setFormError('');
+    try {
+      const { data } = await api.get(`/api/ventas/${v.id_Venta}`);
+      setIdCliente(data.id_Cliente);
+      setDetalle(data.detalle.map(d => ({ id_Producto: d.id_Producto, cantidad: d.cantidad })));
+      setEditId(v.id_Venta);
+      setModal(true);
+    } catch {
+      notify('Error al cargar datos para editar', 'error');
+    }
+  }
+
   async function guardar(e) {
     e.preventDefault(); setFormError('');
     const lineas = detalle.filter(d => d.id_Producto && d.cantidad > 0);
@@ -45,16 +59,22 @@ export default function Ventas() {
       return setFormError('Selecciona un cliente y al menos un producto');
     }
     try {
-      await api.post('/api/ventas', {
+      const payload = {
         id_Cliente: parseInt(idCliente),
         detalle: lineas.map(d => ({ id_Producto: parseInt(d.id_Producto), cantidad: parseInt(d.cantidad) })),
-      });
+      };
+      if (editId) {
+        await api.put(`/api/ventas/${editId}`, payload);
+        notify('Venta actualizada correctamente');
+      } else {
+        await api.post('/api/ventas', payload);
+        notify('Venta registrada correctamente');
+      }
       setModal(false);
-      setIdCliente(''); setDetalle([{ id_Producto: '', cantidad: 1 }]);
-      notify('Venta registrada correctamente');
+      setIdCliente(''); setDetalle([{ id_Producto: '', cantidad: 1 }]); setEditId(null);
       cargar();
     } catch (err) {
-      setFormError(err.response?.data?.error || 'Error al registrar venta');
+      setFormError(err.response?.data?.error || 'Error al guardar venta');
     }
   }
 
@@ -97,7 +117,7 @@ export default function Ventas() {
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn btn-ghost" onClick={exportarCSV}>⬇ Exportar CSV</button>
           {puedeCrearVenta && (
-            <button className="btn btn-primary" onClick={() => { setFormError(''); setModal(true); }}>
+            <button className="btn btn-primary" onClick={() => { setFormError(''); setIdCliente(''); setDetalle([{ id_Producto: '', cantidad: 1 }]); setEditId(null); setModal(true); }}>
               + Nueva venta
             </button>
           )}
@@ -127,6 +147,9 @@ export default function Ventas() {
                   <td>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => verDetalle(v)}>Ver</button>
+                      {puedeModificarVenta && (
+                        <button className="btn btn-ghost btn-sm" onClick={() => abrirEditar(v)}>Editar</button>
+                      )}
                       {puedeEliminarVenta && (
                         <button className="btn btn-danger btn-sm" onClick={() => eliminar(v.id_Venta)}>Eliminar</button>
                       )}
@@ -144,7 +167,7 @@ export default function Ventas() {
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setModal(false)}>
           <div className="modal" style={{ maxWidth: 620 }}>
             <div className="modal-header">
-              <h2>Nueva venta</h2>
+              <h2>{editId ? `Editar venta #${editId}` : 'Nueva venta'}</h2>
               <button className="modal-close" onClick={() => setModal(false)}>×</button>
             </div>
             <form onSubmit={guardar}>
@@ -202,7 +225,7 @@ export default function Ventas() {
 
               <div className="modal-footer">
                 <button type="button" className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
-                <button type="submit" className="btn btn-primary">Registrar venta</button>
+                <button type="submit" className="btn btn-primary">{editId ? 'Guardar cambios' : 'Registrar venta'}</button>
               </div>
             </form>
           </div>

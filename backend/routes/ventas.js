@@ -4,8 +4,10 @@ const auth         = require('../middleware/authMiddleware');
 const requireRole  = require('../middleware/roleMiddleware');
 
 // Roles:  1=Admin  2=Vendedor  4=Supervisor
-const SOLO_LECTURA    = [1, 2, 4];   // pueden ver ventas
-const PUEDE_ESCRIBIR  = [1, 2];      // pueden crear / eliminar
+const SOLO_LECTURA    = [1, 2, 4, 5];  // pueden ver ventas
+const PUEDE_CREAR     = [1, 2, 5];     // pueden crear ventas
+const PUEDE_EDITAR    = [1, 2, 5];     // pueden editar ventas
+const PUEDE_ELIMINAR  = [1];           // solo admin elimina
 
 router.use(auth);
 
@@ -64,8 +66,8 @@ router.get('/:id', requireRole(SOLO_LECTURA), async (req, res, next) => {
   }
 });
 
-// POST /api/ventas  — solo Admin y Vendedor
-router.post('/', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
+// POST /api/ventas  — Admin, Vendedor, Cajero
+router.post('/', requireRole(PUEDE_CREAR), async (req, res, next) => {
   const { id_Cliente, detalle } = req.body;
   const id_Usuario = req.usuario.id_Usuario;
 
@@ -99,8 +101,8 @@ router.post('/', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
   }
 });
 
-// DELETE /api/ventas/:id  — solo Admin y Vendedor
-router.delete('/:id', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
+// DELETE /api/ventas/:id  — solo Admin
+router.delete('/:id', requireRole(PUEDE_ELIMINAR), async (req, res, next) => {
   try {
     const db = req.app.locals.db;
     
@@ -108,6 +110,35 @@ router.delete('/:id', requireRole(PUEDE_ESCRIBIR), async (req, res, next) => {
     await db.query(`CALL eliminar_venta_restaurar_stock(?, @p_estado)`, [req.params.id]);
     
     // Obtener los parámetros de salida
+    const [[{ p_estado }]] = await db.query(`SELECT @p_estado AS p_estado`);
+
+    if (p_estado && p_estado.startsWith('ERROR')) {
+      return res.status(400).json({ error: p_estado });
+    }
+
+    res.json({ mensaje: p_estado });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/ventas/:id  — Admin, Vendedor, Cajero
+router.put('/:id', requireRole(PUEDE_EDITAR), async (req, res, next) => {
+  const { id_Cliente, detalle } = req.body;
+
+  if (!id_Cliente || !detalle || detalle.length === 0) {
+    return res.status(400).json({ error: 'id_Cliente y al menos un producto son requeridos' });
+  }
+
+  try {
+    const db = req.app.locals.db;
+    
+    const detallesJSON = JSON.stringify(detalle.map(d => ({
+        id_producto: d.id_Producto,
+        cantidad: d.cantidad
+    })));
+
+    await db.query(`CALL editar_venta(?, ?, ?, @p_estado)`, [req.params.id, id_Cliente, detallesJSON]);
     const [[{ p_estado }]] = await db.query(`SELECT @p_estado AS p_estado`);
 
     if (p_estado && p_estado.startsWith('ERROR')) {

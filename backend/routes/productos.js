@@ -3,8 +3,8 @@ const router       = express.Router();
 const auth         = require('../middleware/authMiddleware');
 const requireRole  = require('../middleware/roleMiddleware');
 
-const LECTURA   = [1, 2, 4];  // vendedor necesita ver productos para registrar ventas
-const ESCRITURA = [1];
+const LECTURA   = [1, 2, 3, 4, 5]; // Todos pueden ver productos
+const ESCRITURA = [1, 3];          // Admin, Bodeguero
 
 router.use(auth);
 

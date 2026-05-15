@@ -50,7 +50,7 @@ BEGIN
         SET v_count = JSON_LENGTH(p_detalles_json);
         
         -- Iterar los detalles
-        WHILE v_i < v_count DO
+        detalle_loop: WHILE v_i < v_count DO
             SET v_id_producto = JSON_UNQUOTE(JSON_EXTRACT(p_detalles_json, CONCAT('$[', v_i, '].id_producto')));
             SET v_cantidad = JSON_UNQUOTE(JSON_EXTRACT(p_detalles_json, CONCAT('$[', v_i, '].cantidad')));
             -- Obtener precio actual
@@ -64,7 +64,7 @@ BEGIN
                 SET p_estado = CONCAT('ERROR: Stock insuficiente para el producto ID ', v_id_producto);
                 ROLLBACK;
                 -- Terminar ejecución forzando salir del bloque
-                LEAVE WHILE; 
+                LEAVE detalle_loop; 
             END IF;
             
             -- Insertar detalle
@@ -214,6 +214,92 @@ BEGIN
     GROUP BY p.id_Producto, p.nombre_Producto
     ORDER BY total_vendido DESC
     LIMIT p_limit;
+END //
+
+-- ============================================================
+-- 6. editar_venta
+-- ============================================================
+DROP PROCEDURE IF EXISTS editar_venta //
+CREATE PROCEDURE editar_venta(
+    IN p_id_venta INT,
+    IN p_id_cliente INT,
+    IN p_detalles_json JSON,
+    OUT p_estado VARCHAR(200)
+)
+BEGIN
+    DECLARE done INT DEFAULT FALSE;
+    DECLARE v_id_producto INT;
+    DECLARE v_cantidad INT;
+    DECLARE v_i INT DEFAULT 0;
+    DECLARE v_count INT;
+    DECLARE v_precio DECIMAL(10,2);
+    DECLARE v_stock_actual INT;
+    
+    DECLARE cur CURSOR FOR SELECT id_Producto, cantidad FROM Detalle WHERE id_Venta = p_id_venta;
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = TRUE;
+    
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION 
+    BEGIN
+        ROLLBACK;
+        SET p_estado = 'ERROR: Transacción fallida al editar la venta (SQLEXCEPTION).';
+    END;
+
+    START TRANSACTION;
+    
+    IF NOT EXISTS (SELECT 1 FROM Venta WHERE id_Venta = p_id_venta) THEN
+        SET p_estado = 'ERROR: La venta no existe.';
+        ROLLBACK;
+    ELSEIF NOT EXISTS (SELECT 1 FROM Cliente WHERE id_Cliente = p_id_cliente) THEN
+        SET p_estado = 'ERROR: El cliente no existe.';
+        ROLLBACK;
+    ELSE
+        -- 1. Restaurar stock de los detalles actuales
+        OPEN cur;
+        read_loop: LOOP
+            FETCH cur INTO v_id_producto, v_cantidad;
+            IF done THEN
+                LEAVE read_loop;
+            END IF;
+            UPDATE Producto SET stock = stock + v_cantidad WHERE id_Producto = v_id_producto;
+        END LOOP;
+        CLOSE cur;
+        
+        -- 2. Eliminar detalles antiguos
+        DELETE FROM Detalle WHERE id_Venta = p_id_venta;
+        
+        -- 3. Actualizar cliente en Venta
+        UPDATE Venta SET id_Cliente = p_id_cliente WHERE id_Venta = p_id_venta;
+        
+        -- 4. Insertar nuevos detalles y descontar stock
+        SET v_count = JSON_LENGTH(p_detalles_json);
+        
+        detalle_loop: WHILE v_i < v_count DO
+            SET v_id_producto = JSON_UNQUOTE(JSON_EXTRACT(p_detalles_json, CONCAT('$[', v_i, '].id_producto')));
+            SET v_cantidad = JSON_UNQUOTE(JSON_EXTRACT(p_detalles_json, CONCAT('$[', v_i, '].cantidad')));
+            
+            SET v_precio = (SELECT precio_Producto FROM Producto WHERE id_Producto = v_id_producto);
+            
+            SELECT stock INTO v_stock_actual FROM Producto WHERE id_Producto = v_id_producto FOR UPDATE;
+            
+            IF v_stock_actual < v_cantidad THEN
+                SET p_estado = CONCAT('ERROR: Stock insuficiente para el producto ID ', v_id_producto);
+                ROLLBACK;
+                LEAVE detalle_loop; 
+            END IF;
+            
+            INSERT INTO Detalle (cantidad, precio_actual, id_Venta, id_Producto)
+            VALUES (v_cantidad, v_precio, p_id_venta, v_id_producto);
+            
+            UPDATE Producto SET stock = stock - v_cantidad WHERE id_Producto = v_id_producto;
+            
+            SET v_i = v_i + 1;
+        END WHILE detalle_loop;
+
+        IF p_estado IS NULL OR p_estado NOT LIKE 'ERROR%' THEN
+            COMMIT;
+            SET p_estado = 'EXITO: Venta actualizada correctamente.';
+        END IF;
+    END IF;
 END //
 
 DELIMITER ;

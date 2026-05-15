@@ -4,7 +4,7 @@ const auth         = require('../middleware/authMiddleware');
 const requireRole  = require('../middleware/roleMiddleware');
 
 // Roles: 1=Admin, 2=Vendedor, 3=Bodeguero, 4=Supervisor, 5=Cajero
-const LECTURA   = [1, 3, 4]; // Admin, Bodeguero, Supervisor
+const LECTURA   = [1, 2, 3, 4, 5]; // Todos para que Productos.jsx no falle
 const ESCRITURA = [1, 4];    // Admin, Supervisor
 
 router.use(auth);

@@ -3,7 +3,7 @@
 **Universidad del Valle de Guatemala**  
 Base de Datos 1 · Ciclo 1, 2026  
 Alejandro Manuel Jerez Melgar — 24678
-Existen otras dos ramas:
+**Existen otras dos ramas:**
 Proyecto 2 WEB: web/Proyecto-2-E-commerce
 Proyecto 3 DB: db/Proyecto-3
 

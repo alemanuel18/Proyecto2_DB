@@ -39,12 +39,12 @@ El `.env.example` ya incluye las credenciales requeridas por la rúbrica:
 ```env
 MYSQL_ROOT_PASSWORD=rootsecret
 MYSQL_DATABASE=tienda_db
-MYSQL_USER=proy2
+MYSQL_USER=proy3
 MYSQL_PASSWORD=secret
 JWT_SECRET=cambia_esto_por_un_secreto_seguro
 ```
 
-> ⚠️ **No cambies `MYSQL_USER` ni `MYSQL_PASSWORD`** — la rúbrica exige `proy2` / `secret`.
+> ⚠️ **No cambies `MYSQL_USER` ni `MYSQL_PASSWORD`** — la rúbrica exige `proy3` / `secret`.
 
 ### 3. Levantar todos los servicios
 

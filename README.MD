@@ -25,6 +25,7 @@ No se necesita Node.js, MySQL ni ningún otro runtime instalado localmente.
 ```bash
 git clone https://github.com/alemanuel18/Proyecto2_DB.git
 cd proyecto2
+git checkout web/Proyecto-2-E-commerce
 ```
 
 ### 2. Crear el archivo de variables de entorno
